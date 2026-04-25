@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Wishlist</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f7f7f8;
+      --surface: #ffffff;
+      --border: #e4e4e7;
+      --text: #18181b;
+      --muted: #71717a;
+      --accent: #6366f1;
+      --accent-light: #eef2ff;
+      --done-color: #22c55e;
+      --done-light: #f0fdf4;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header h1 { font-size: 1.25rem; font-weight: 700; flex: 1; }
+    header span { font-size: 1.5rem; }
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      padding: 14px 16px 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+
+    .tab-btn {
+      white-space: nowrap;
+      padding: 7px 14px;
+      border-radius: 99px;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: .85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .tab-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .tab-btn:not(.active):hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    main { padding: 16px; max-width: 640px; margin: 0 auto; }
+
+    .add-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      padding: 12px;
+      border-radius: var(--radius);
+      border: 2px dashed var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-size: .9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .15s;
+      margin-bottom: 16px;
+    }
+    .add-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.4);
+      z-index: 100;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border-radius: var(--radius) var(--radius) 0 0;
+      padding: 20px;
+      width: 100%;
+      max-width: 640px;
+      animation: slideUp .2s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    .modal h2 { font-size: 1.1rem; margin-bottom: 16px; }
+
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: .8rem; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: .95rem;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--bg);
+      transition: border-color .15s;
+      outline: none;
+    }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+      border-color: var(--accent);
+    }
+    .form-group textarea { resize: vertical; min-height: 72px; }
+
+    .status-toggle {
+      display: flex;
+      gap: 8px;
+    }
+    .status-toggle label {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      cursor: pointer;
+      font-size: .9rem;
+      font-weight: 500;
+      color: var(--muted);
+      transition: all .15s;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .status-toggle input { display: none; }
+    .status-toggle input:checked + span {
+      font-weight: 600;
+    }
+    .status-toggle label:has(input[value="want"]:checked) { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+    .status-toggle label:has(input[value="done"]:checked) { border-color: var(--done-color); background: var(--done-light); color: var(--done-color); }
+
+    .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+    .btn { flex: 1; padding: 12px; border-radius: 8px; font-size: .95rem; font-weight: 600; cursor: pointer; border: none; transition: all .15s; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #4f46e5; }
+    .btn-secondary { background: var(--bg); color: var(--muted); border: 1.5px solid var(--border); }
+    .btn-secondary:hover { background: var(--border); }
+    .btn-danger { background: #fee2e2; color: #ef4444; }
+    .btn-danger:hover { background: #fecaca; }
+
+    .items-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--muted);
+    }
+    .empty-state .emoji { font-size: 3rem; display: block; margin-bottom: 12px; }
+    .empty-state p { font-size: .9rem; }
+
+    .item-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      transition: all .15s;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .item-card:hover { border-color: var(--accent); }
+    .item-card.done { opacity: .75; }
+    .item-card.done .item-title { text-decoration: line-through; color: var(--muted); }
+
+    .item-check {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      flex-shrink: 0;
+      margin-top: 1px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .15s;
+    }
+    .item-card.done .item-check { background: var(--done-color); border-color: var(--done-color); color: #fff; }
+
+    .item-body { flex: 1; min-width: 0; }
+    .item-title { font-weight: 600; font-size: .95rem; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .item-notes { font-size: .82rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .item-badge {
+      font-size: .7rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 99px;
+      flex-shrink: 0;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .badge-want { background: var(--accent-light); color: var(--accent); }
+    .badge-done { background: var(--done-light); color: var(--done-color); }
+
+    .filter-row {
+      display: flex;
+      gap: 6px;
+      padding: 10px 16px 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .filter-row::-webkit-scrollbar { display: none; }
+    .filter-chip {
+      white-space: nowrap;
+      padding: 4px 10px;
+      border-radius: 99px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .filter-chip.active { background: var(--text); border-color: var(--text); color: #fff; }
+  </style>
+</head>
+<body>
+
+<header>
+  <span>✨</span>
+  <h1>My Wishlist</h1>
+</header>
+
+<div class="tabs" id="tabs"></div>
+<div class="filter-row" id="filterRow"></div>
+
+<main>
+  <button class="add-btn" id="addBtn">＋ Add item</button>
+  <div class="items-list" id="itemsList"></div>
+</main>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modal">
+    <h2 id="modalTitle">Add Item</h2>
+    <div class="form-group">
+      <label>Title</label>
+      <input type="text" id="inputTitle" placeholder="What do you want to remember?" />
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="inputNotes" placeholder="Any details, links, or reminders…"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Category</label>
+      <select id="inputCategory"></select>
+    </div>
+    <div class="form-group">
+      <label>Status</label>
+      <div class="status-toggle">
+        <label>
+          <input type="radio" name="status" id="statusWant" value="want" checked />
+          <span>⭐ Want</span>
+        </label>
+        <label>
+          <input type="radio" name="status" id="statusDone" value="done" />
+          <span>✅ Done</span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+      <button class="btn btn-danger" id="deleteBtn" style="display:none">Delete</button>
+      <button class="btn btn-primary" id="saveBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const CATEGORIES = [
+    { id: "books",      label: "Books",         emoji: "📚" },
+    { id: "movies",     label: "Movies & TV",   emoji: "🎬" },
+    { id: "restaurants",label: "Restaurants",   emoji: "🍽️" },
+    { id: "travel",     label: "Travel",        emoji: "✈️" },
+    { id: "other",      label: "Other",         emoji: "💡" },
+  ];
+
+  let items = JSON.parse(localStorage.getItem("wishlist_items") || "[]");
+  let activeCategory = CATEGORIES[0].id;
+  let activeFilter = "all"; // all | want | done
+  let editingId = null;
+
+  function save() {
+    localStorage.setItem("wishlist_items", JSON.stringify(items));
+  }
+
+  function uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2);
+  }
+
+  // --- Build tabs ---
+  const tabsEl = document.getElementById("tabs");
+  CATEGORIES.forEach(cat => {
+    const btn = document.createElement("button");
+    btn.className = "tab-btn" + (cat.id === activeCategory ? " active" : "");
+    btn.dataset.id = cat.id;
+    btn.textContent = cat.emoji + " " + cat.label;
+    btn.addEventListener("click", () => {
+      activeCategory = cat.id;
+      activeFilter = "all";
+      renderTabs();
+      renderFilters();
+      renderItems();
+    });
+    tabsEl.appendChild(btn);
+  });
+
+  function renderTabs() {
+    tabsEl.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.id === activeCategory);
+    });
+  }
+
+  // --- Filters ---
+  const filterRow = document.getElementById("filterRow");
+  const FILTERS = [
+    { id: "all",  label: "All" },
+    { id: "want", label: "⭐ Want" },
+    { id: "done", label: "✅ Done" },
+  ];
+  FILTERS.forEach(f => {
+    const chip = document.createElement("button");
+    chip.className = "filter-chip" + (f.id === activeFilter ? " active" : "");
+    chip.dataset.id = f.id;
+    chip.textContent = f.label;
+    chip.addEventListener("click", () => {
+      activeFilter = f.id;
+      renderFilters();
+      renderItems();
+    });
+    filterRow.appendChild(chip);
+  });
+
+  function renderFilters() {
+    filterRow.querySelectorAll(".filter-chip").forEach(chip => {
+      chip.classList.toggle("active", chip.dataset.id === activeFilter);
+    });
+  }
+
+  // --- Populate category select ---
+  const selectCat = document.getElementById("inputCategory");
+  CATEGORIES.forEach(cat => {
+    const opt = document.createElement("option");
+    opt.value = cat.id;
+    opt.textContent = cat.emoji + " " + cat.label;
+    selectCat.appendChild(opt);
+  });
+
+  // --- Render items ---
+  const itemsList = document.getElementById("itemsList");
+
+  function renderItems() {
+    const filtered = items.filter(it => {
+      if (it.category !== activeCategory) return false;
+      if (activeFilter === "want") return it.status === "want";
+      if (activeFilter === "done") return it.status === "done";
+      return true;
+    });
+
+    itemsList.innerHTML = "";
+
+    if (filtered.length === 0) {
+      const cat = CATEGORIES.find(c => c.id === activeCategory);
+      itemsList.innerHTML = `
+        <div class="empty-state">
+          <span class="emoji">${cat.emoji}</span>
+          <p>No ${activeFilter === "all" ? "" : activeFilter + " "}items in ${cat.label} yet.<br>Tap <strong>+ Add item</strong> to get started.</p>
+        </div>`;
+      return;
+    }
+
+    filtered.forEach(item => {
+      const card = document.createElement("div");
+      card.className = "item-card" + (item.status === "done" ? " done" : "");
+      card.innerHTML = `
+        <div class="item-check">${item.status === "done" ? "✓" : ""}</div>
+        <div class="item-body">
+          <div class="item-title">${escHtml(item.title)}</div>
+          ${item.notes ? `<div class="item-notes">${escHtml(item.notes)}</div>` : ""}
+        </div>
+        <span class="item-badge ${item.status === "done" ? "badge-done" : "badge-want"}">${item.status}</span>
+      `;
+      card.addEventListener("click", () => openEdit(item.id));
+      itemsList.appendChild(card);
+    });
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  // --- Modal logic ---
+  const overlay = document.getElementById("modalOverlay");
+  const modalTitle = document.getElementById("modalTitle");
+  const inputTitle = document.getElementById("inputTitle");
+  const inputNotes = document.getElementById("inputNotes");
+  const deleteBtn = document.getElementById("deleteBtn");
+
+  document.getElementById("addBtn").addEventListener("click", () => openAdd());
+  document.getElementById("cancelBtn").addEventListener("click", closeModal);
+  overlay.addEventListener("click", e => { if (e.target === overlay) closeModal(); });
+
+  document.getElementById("saveBtn").addEventListener("click", () => {
+    const title = inputTitle.value.trim();
+    if (!title) { inputTitle.focus(); return; }
+    const status = document.querySelector('input[name="status"]:checked').value;
+    const category = selectCat.value;
+    const notes = inputNotes.value.trim();
+
+    if (editingId) {
+      const idx = items.findIndex(i => i.id === editingId);
+      if (idx !== -1) items[idx] = { ...items[idx], title, notes, status, category };
+    } else {
+      items.unshift({ id: uid(), title, notes, status, category, createdAt: Date.now() });
+    }
+    save();
+    closeModal();
+    renderItems();
+  });
+
+  deleteBtn.addEventListener("click", () => {
+    if (!editingId) return;
+    items = items.filter(i => i.id !== editingId);
+    save();
+    closeModal();
+    renderItems();
+  });
+
+  function openAdd() {
+    editingId = null;
+    modalTitle.textContent = "Add Item";
+    inputTitle.value = "";
+    inputNotes.value = "";
+    selectCat.value = activeCategory;
+    document.getElementById("statusWant").checked = true;
+    deleteBtn.style.display = "none";
+    overlay.classList.add("open");
+    setTimeout(() => inputTitle.focus(), 100);
+  }
+
+  function openEdit(id) {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    editingId = id;
+    modalTitle.textContent = "Edit Item";
+    inputTitle.value = item.title;
+    inputNotes.value = item.notes || "";
+    selectCat.value = item.category;
+    document.querySelector(`input[name="status"][value="${item.status}"]`).checked = true;
+    deleteBtn.style.display = "block";
+    overlay.classList.add("open");
+    setTimeout(() => inputTitle.focus(), 100);
+  }
+
+  function closeModal() {
+    overlay.classList.remove("open");
+    editingId = null;
+  }
+
+  // Initial render
+  renderItems();
+</script>
+</body>
+</html>

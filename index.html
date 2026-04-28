@@ -514,12 +514,12 @@ function buildItemCard(item, c){
   titleEl.textContent = item.title||'Untitled';
   body.appendChild(titleEl);
 
-  // Row 1: director pill | actors pill | year | Match/Rating stars
+  // Row 1: director | year | Match/Rating stars — single non-wrapping row
   if(c.id==='movies'||c.id==='tv-shows'){
     const row1 = el('div','item-card-meta');
-    if(item.director&&item.director!=='N/A') row1.insertAdjacentHTML('beforeend',`<span class="actor-pill">${esc(item.director)}</span>`);
-    if(item.actors&&item.actors!=='N/A') row1.insertAdjacentHTML('beforeend',`<span class="actor-pill">${esc(item.actors)}</span>`);
-    if(item.year) row1.insertAdjacentHTML('beforeend',`<span class="badge badge-year">${esc(item.year)}</span>`);
+    row1.style.cssText='flex-wrap:nowrap;overflow:hidden';
+    if(item.director&&item.director!=='N/A') row1.insertAdjacentHTML('beforeend',`<span class="actor-pill" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:1">${esc(item.director)}</span>`);
+    if(item.year) row1.insertAdjacentHTML('beforeend',`<span class="badge badge-year" style="flex-shrink:0">${esc(item.year)}</span>`);
     const starVal = item.status==='future' ? item.match : item.rating;
     const starLabel = item.status==='future' ? 'Match' : 'Rating';
     const starEl = buildStarDisplay(starVal, starLabel);

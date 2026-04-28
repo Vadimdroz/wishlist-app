@@ -228,6 +228,44 @@ const YT_KEY = 'AIzaSyCUhLADIiLB4AN5A3wdwXd8X_D8PnOnNBg';
 const OMDB_KEY_DEFAULT = '919ea22c';
 
 // ─── State ────────────────────────────────────────────────────────────────────
+// Recovery: merge data from all known keys so nothing is lost
+(function recoverData(){
+  const keys = ['wl_v3','wl_v2','wl_v1','wishlist_items'];
+  const seen = new Set();
+  let merged = [];
+  keys.forEach(k => {
+    try {
+      const raw = localStorage.getItem(k);
+      if(!raw) return;
+      const arr = JSON.parse(raw);
+      if(!Array.isArray(arr) || !arr.length) return;
+      // if this is the old wishlist_items format, map fields
+      arr.forEach(item => {
+        const id = item.id || item._id || (item.title + item.cat);
+        if(seen.has(id)) return;
+        seen.add(id);
+        // old format used 'category' instead of 'cat', 'name' instead of 'title'
+        const mapped = {
+          id: item.id || (Date.now().toString(36)+Math.random().toString(36).slice(2)),
+          cat: item.cat || item.category || 'movies',
+          status: item.status || item.done ? 'done' : 'future',
+          title: item.title || item.name || 'Untitled',
+          year: item.year || '',
+          source: item.source || 'N/A',
+          poster: item.poster || item.image || null,
+          notes: item.notes || item.description || '',
+          ...item
+        };
+        merged.push(mapped);
+      });
+    } catch(e){}
+  });
+  if(merged.length > 0){
+    // Save consolidated data back to wl_v3
+    localStorage.setItem('wl_v3', JSON.stringify(merged));
+  }
+})();
+
 let items = JSON.parse(localStorage.getItem('wl_v3') || '[]');
 // migrate old 'tv' category
 items = items.map(i => {

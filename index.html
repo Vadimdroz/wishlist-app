@@ -873,7 +873,6 @@ function buildForm(body, c, item){
     const sb = el('button','smart-btn');
     sb.id='smartBtn'; sb.type='button';
     sb.textContent = c.id==='books' ? '📚 Smart Update from Open Library'
-      : c.id==='tv-shows' ? '📺 Smart Update from TVmaze'
       : '🎬 Smart Update from IMDb';
     sb.onclick = smartUpdate;
     body.appendChild(sb);
@@ -1136,9 +1135,10 @@ function smartUpdate(){
   const title = v('f-title').trim();
   if(!title){ document.getElementById('f-title').focus(); return; }
   const c = getCat(catId);
-  if(c.id==='tv-shows'){ searchTvmaze(title); return; }
   if(c.id==='books'){ searchOpenLibrary(title); return; }
-  searchOmdb(localStorage.getItem('omdb_key')||OMDB_KEY_DEFAULT, title);
+  // Both movies and TV shows use OMDB (type param filters appropriately)
+  const omdbType = c.id==='tv-shows' ? 'series' : 'movie';
+  searchOmdb(localStorage.getItem('omdb_key')||OMDB_KEY_DEFAULT, title, omdbType);
 }
 
 function setSmartStatus(msg){ const e=document.getElementById('smartStatus'); if(e) e.textContent=msg; }
@@ -1150,11 +1150,11 @@ function saveOmdbKey(){
 }
 
 // ── OMDB ──────────────────────────────────────────────────────────────────────
-async function searchOmdb(key, title){
+async function searchOmdb(key, title, type='movie'){
   setSmartStatus('Searching…');
   document.getElementById('pickerContainer').innerHTML='';
   try{
-    const res=await fetch(`https://www.omdbapi.com/?s=${encodeURIComponent(title)}&type=movie&apikey=${key}`);
+    const res=await fetch(`https://www.omdbapi.com/?s=${encodeURIComponent(title)}&type=${type}&apikey=${key}`);
     const data=await res.json();
     if(data.Response==='False'){ setSmartStatus(data.Error||'Not found'); return; }
     const results=data.Search||[];

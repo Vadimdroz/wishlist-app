@@ -1,502 +1,1088 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My Wishlist</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Wishlist</title>
+<link rel="preconnect" href="https://api.fontshare.com"/>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d14;--surface:#16161f;--surface2:#1e1e2a;
+  --border:rgba(255,255,255,.08);--text:#f0f0f5;--muted:#6b6b8a;
+}
+body{font-family:'Satoshi',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
-    :root {
-      --bg: #f7f7f8;
-      --surface: #ffffff;
-      --border: #e4e4e7;
-      --text: #18181b;
-      --muted: #71717a;
-      --accent: #6366f1;
-      --accent-light: #eef2ff;
-      --done-color: #22c55e;
-      --done-light: #f0fdf4;
-      --radius: 12px;
-      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
-    }
+/* NAV */
+.nav{display:flex;align-items:center;gap:16px;padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:50}
+.nav-logo{font-weight:700;font-size:1.1rem;letter-spacing:-.02em;flex:1}
+.tab-btn{padding:6px 14px;border-radius:20px;font-size:.85rem;font-weight:500;transition:.15s}
+.tab-btn.active{background:var(--surface2);color:var(--text)}
+.tab-btn:not(.active){color:var(--muted)}
+.tab-btn:hover:not(.active){color:var(--text)}
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100dvh;
-    }
+/* CONTENT */
+.content{max-width:720px;margin:0 auto;padding:20px 16px 100px}
 
-    header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 16px 20px;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    header h1 { font-size: 1.25rem; font-weight: 700; flex: 1; }
-    header span { font-size: 1.5rem; }
+/* SEARCH */
+.search-wrap{position:relative;margin-bottom:20px}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--muted);pointer-events:none}
+.search-input{width:100%;padding:10px 12px 10px 36px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:inherit;font-size:.9rem;outline:none;transition:.15s}
+.search-input:focus{border-color:rgba(255,255,255,.2)}
+.search-input::placeholder{color:var(--muted)}
+.search-results-label{font-size:.8rem;color:var(--muted);margin-bottom:12px;letter-spacing:.04em;text-transform:uppercase}
 
-    .tabs {
-      display: flex;
-      gap: 6px;
-      padding: 14px 16px 0;
-      overflow-x: auto;
-      scrollbar-width: none;
-    }
-    .tabs::-webkit-scrollbar { display: none; }
+/* GRID */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cat-card{border-radius:16px;overflow:hidden;position:relative;aspect-ratio:4/3;cursor:pointer;border:1px solid var(--border)}
+.cat-card img{width:100%;height:100%;object-fit:cover;display:block}
+.cat-card-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.72) 40%,transparent)}
+.cat-card-body{position:absolute;bottom:12px;left:12px;right:12px}
+.cat-card-label{font-weight:700;font-size:1rem;display:flex;align-items:center;gap:6px}
+.cat-card-count{font-size:.75rem;color:rgba(255,255,255,.6);margin-top:2px}
+.grid>.cat-card:last-child:nth-child(odd){grid-column:1/-1}
 
-    .tab-btn {
-      white-space: nowrap;
-      padding: 7px 14px;
-      border-radius: 99px;
-      border: 1.5px solid var(--border);
-      background: var(--surface);
-      color: var(--muted);
-      font-size: .85rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all .15s;
-    }
-    .tab-btn.active {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
-    }
-    .tab-btn:not(.active):hover {
-      border-color: var(--accent);
-      color: var(--accent);
-    }
+/* SUB TABS */
+.sub-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.sub-tab{padding:6px 14px;border-radius:20px;font-size:.82rem;font-weight:500;background:var(--surface);border:1px solid var(--border);transition:.15s;cursor:pointer}
+.sub-tab.active{background:var(--surface2);border-color:rgba(255,255,255,.18);color:var(--text)}
+.sub-tab:not(.active){color:var(--muted)}
 
-    main { padding: 16px; max-width: 640px; margin: 0 auto; }
+/* SECTION HEADER */
+.section-header{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.back-btn{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.88rem;padding:4px 0;cursor:pointer}
+.back-btn:hover{color:var(--text)}
+.section-title{font-size:1.1rem;font-weight:700;flex:1}
+.add-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;font-size:.85rem;font-weight:600;background:var(--surface2);border:1px solid var(--border);transition:.15s}
+.add-btn:hover{background:var(--surface);border-color:rgba(255,255,255,.15)}
 
-    .add-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      width: 100%;
-      padding: 12px;
-      border-radius: var(--radius);
-      border: 2px dashed var(--border);
-      background: transparent;
-      color: var(--muted);
-      font-size: .9rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all .15s;
-      margin-bottom: 16px;
-    }
-    .add-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+/* ITEM CARDS */
+.items-list{display:flex;flex-direction:column;gap:10px}
+.item-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;cursor:pointer;transition:.15s;display:flex;flex-direction:column}
+.item-card:hover{border-color:rgba(255,255,255,.14)}
+.item-card-inner{display:flex;gap:0;flex:1}
+.item-card-poster{width:90px;min-width:90px;aspect-ratio:2/3;object-fit:cover;display:block}
+.item-card-body{padding:12px 14px;flex:1;display:flex;flex-direction:column;gap:4px;min-width:0}
+.item-card-title{font-weight:700;font-size:.95rem;line-height:1.3}
+.item-card-meta{font-size:.78rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.item-card-notes{font-size:.8rem;color:var(--muted);margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.item-card-footer{display:flex;align-items:center;gap:8px;padding:8px 14px;border-top:1px solid var(--border);flex-wrap:wrap}
+.source-tag{font-size:.72rem;color:#fff;font-weight:700;letter-spacing:.01em}
+.jdi-btn{margin-left:auto;padding:5px 12px;border-radius:8px;font-size:.78rem;font-weight:600;background:rgba(16,185,129,.15);color:#6ee7b7;border:1px solid rgba(16,185,129,.25);transition:.15s}
+.jdi-btn:hover{background:rgba(16,185,129,.25)}
+.jdi-done-tag{margin-left:auto;font-size:.75rem;color:var(--muted);display:flex;align-items:center;gap:4px}
+.kindle-link{font-size:.72rem;color:#f59e0b;font-weight:600;text-decoration:none;display:flex;align-items:center;gap:3px;padding:3px 7px;border-radius:6px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2)}
+.kindle-link:hover{background:rgba(245,158,11,.2)}
 
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,.4);
-      z-index: 100;
-      align-items: flex-end;
-      justify-content: center;
-    }
-    .modal-overlay.open { display: flex; }
+/* BADGES */
+.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:6px;font-size:.7rem;font-weight:600;letter-spacing:.02em}
+.badge-imdb{background:rgba(245,158,11,.15);color:#fbbf24}
+.badge-year{background:var(--surface2);color:var(--muted)}
+.badge-lang{background:var(--surface2);color:var(--muted)}
+.badge-pages{background:var(--surface2);color:var(--muted)}
+.fit-badge{padding:2px 7px;border-radius:6px;font-size:.68rem;font-weight:700}
+.fit-kids{background:rgba(99,102,241,.15);color:#a5b4fc}
+.fit-wife{background:rgba(236,72,153,.15);color:#f9a8d4}
 
-    .modal {
-      background: var(--surface);
-      border-radius: var(--radius) var(--radius) 0 0;
-      padding: 20px;
-      width: 100%;
-      max-width: 640px;
-      animation: slideUp .2s ease;
-    }
-    @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+/* GENRE PILLS */
+.genre-pill{padding:3px 9px;border-radius:20px;font-size:.72rem;font-weight:600;border:1px solid var(--border);color:var(--muted);cursor:pointer;transition:.15s;background:transparent}
+.genre-pill.on{background:rgba(16,185,129,.15);color:#6ee7b7;border-color:rgba(16,185,129,.3)}
+.genre-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
 
-    .modal h2 { font-size: 1.1rem; margin-bottom: 16px; }
+/* TRAILER */
+.trailer-thumb{position:relative;border-radius:10px;overflow:hidden;cursor:pointer;margin-top:6px}
+.trailer-thumb img{width:100%;display:block;aspect-ratio:16/9;object-fit:cover}
+.trailer-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35)}
+.trailer-play svg{width:48px;height:48px;opacity:.9}
 
-    .form-group { margin-bottom: 14px; }
-    .form-group label { display: block; font-size: .8rem; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
-    .form-group input, .form-group textarea, .form-group select {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1.5px solid var(--border);
-      border-radius: 8px;
-      font-size: .95rem;
-      font-family: inherit;
-      color: var(--text);
-      background: var(--bg);
-      transition: border-color .15s;
-      outline: none;
-    }
-    .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
-      border-color: var(--accent);
-    }
-    .form-group textarea { resize: vertical; min-height: 72px; }
+/* EMPTY */
+.empty{text-align:center;padding:48px 20px;color:var(--muted)}
+.empty svg{width:48px;height:48px;margin-bottom:12px;opacity:.3;display:block;margin-left:auto;margin-right:auto}
+.empty p{font-size:.9rem}
 
-    .status-toggle {
-      display: flex;
-      gap: 8px;
-    }
-    .status-toggle label {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      padding: 9px;
-      border-radius: 8px;
-      border: 1.5px solid var(--border);
-      cursor: pointer;
-      font-size: .9rem;
-      font-weight: 500;
-      color: var(--muted);
-      transition: all .15s;
-      text-transform: none;
-      letter-spacing: 0;
-    }
-    .status-toggle input { display: none; }
-    .status-toggle input:checked + span {
-      font-weight: 600;
-    }
-    .status-toggle label:has(input[value="want"]:checked) { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
-    .status-toggle label:has(input[value="done"]:checked) { border-color: var(--done-color); background: var(--done-light); color: var(--done-color); }
+/* BOTTOM SHEET */
+.sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:none;align-items:flex-end}
+.sheet-overlay.open{display:flex}
+.sheet{background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:720px;margin:0 auto;max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.sheet-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:10px auto 4px}
+.sheet-head{display:flex;align-items:center;gap:10px;padding:8px 20px 12px;border-bottom:1px solid var(--border)}
+.sheet-head-emoji{font-size:1.4rem}
+.sheet-title{font-weight:700;font-size:1rem;flex:1}
+.sheet-del-btn{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;color:var(--muted);transition:.15s}
+.sheet-del-btn:hover{color:#ef4444;background:rgba(239,68,68,.1)}
+.sheet-body{overflow-y:auto;padding:16px 20px;flex:1}
+.sheet-actions{display:flex;gap:10px;padding:12px 20px;border-top:1px solid var(--border)}
+.sheet-cancel{flex:1;padding:12px;border-radius:12px;background:var(--surface2);font-size:.9rem;font-weight:600}
+.sheet-save{flex:2;padding:12px;border-radius:12px;background:#6366f1;color:#fff;font-size:.9rem;font-weight:600;transition:.15s}
+.sheet-save:hover{background:#5254cc}
 
-    .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
-    .btn { flex: 1; padding: 12px; border-radius: 8px; font-size: .95rem; font-weight: 600; cursor: pointer; border: none; transition: all .15s; }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-primary:hover { background: #4f46e5; }
-    .btn-secondary { background: var(--bg); color: var(--muted); border: 1.5px solid var(--border); }
-    .btn-secondary:hover { background: var(--border); }
-    .btn-danger { background: #fee2e2; color: #ef4444; }
-    .btn-danger:hover { background: #fecaca; }
+/* FORM */
+.form-row{display:flex;flex-direction:column;gap:4px;margin-bottom:14px}
+.form-row label{font-size:.78rem;color:var(--muted);font-weight:500}
+.form-input,.form-textarea,.form-select{width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:inherit;font-size:.9rem;outline:none;transition:.15s}
+.form-input:focus,.form-textarea:focus,.form-select:focus{border-color:rgba(255,255,255,.2)}
+.form-textarea{resize:vertical;min-height:80px}
+.form-row-inline{display:flex;gap:10px}
+.form-row-inline .form-row{flex:1}
+.smart-btn{width:100%;padding:10px;border-radius:10px;background:rgba(99,102,241,.15);color:#a5b4fc;border:1px solid rgba(99,102,241,.3);font-size:.88rem;font-weight:600;transition:.15s;margin-bottom:14px}
+.smart-btn:hover{background:rgba(99,102,241,.25)}
+.smart-status{font-size:.78rem;color:var(--muted);text-align:center;margin-top:-10px;margin-bottom:10px;min-height:18px}
 
-    .items-list { display: flex; flex-direction: column; gap: 10px; }
+/* POSTER SECTION */
+.poster-section{margin-bottom:14px}
+.poster-section>label{font-size:.78rem;color:var(--muted);font-weight:500;display:block;margin-bottom:6px}
+.poster-upload-area{border:1.5px dashed var(--border);border-radius:10px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:.15s}
+.poster-upload-area:hover{border-color:rgba(255,255,255,.18)}
+.poster-upload-area p{font-size:.78rem;color:var(--muted);text-align:center}
+.poster-url-row{display:flex;gap:6px;margin-top:6px;width:100%}
+.poster-url-input{flex:1;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:.82rem;outline:none}
+.poster-url-btn{padding:7px 12px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);font-size:.82rem;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap}
+.poster-preview{position:relative;display:inline-block}
+.poster-preview img{width:90px;aspect-ratio:2/3;object-fit:cover;border-radius:8px;display:block}
+.poster-remove{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#ef4444;color:#fff;font-size:.8rem;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;line-height:1}
 
-    .empty-state {
-      text-align: center;
-      padding: 48px 20px;
-      color: var(--muted);
-    }
-    .empty-state .emoji { font-size: 3rem; display: block; margin-bottom: 12px; }
-    .empty-state p { font-size: .9rem; }
+/* CHECKBOX ROW */
+.check-row{display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap}
+.check-item{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.85rem}
+.check-item input{width:15px;height:15px;accent-color:#6366f1;cursor:pointer}
 
-    .item-card {
-      background: var(--surface);
-      border: 1.5px solid var(--border);
-      border-radius: var(--radius);
-      padding: 14px 16px;
-      box-shadow: var(--shadow);
-      cursor: pointer;
-      transition: all .15s;
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-    }
-    .item-card:hover { border-color: var(--accent); }
-    .item-card.done { opacity: .75; }
-    .item-card.done .item-title { text-decoration: line-through; color: var(--muted); }
+/* DETAILED VIEW */
+.detail-poster{width:120px;min-width:120px;aspect-ratio:2/3;object-fit:cover;border-radius:12px}
+.detail-top{display:flex;gap:14px;margin-bottom:16px}
+.detail-info{flex:1;display:flex;flex-direction:column;gap:6px}
+.detail-title{font-size:1.1rem;font-weight:700;line-height:1.3}
+.detail-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.detail-section{margin-bottom:14px}
+.detail-section-label{font-size:.72rem;color:var(--muted);font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px}
+.detail-section-value{font-size:.9rem;line-height:1.5}
 
-    .item-check {
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      border: 2px solid var(--border);
-      flex-shrink: 0;
-      margin-top: 1px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all .15s;
-    }
-    .item-card.done .item-check { background: var(--done-color); border-color: var(--done-color); color: #fff; }
+/* PICKER */
+.picker-list{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.picker-item{display:flex;align-items:center;gap:10px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:.15s}
+.picker-item:hover{border-color:rgba(255,255,255,.18)}
+.picker-item img{width:40px;aspect-ratio:2/3;object-fit:cover;border-radius:6px;background:var(--surface)}
+.picker-item-info{flex:1;min-width:0}
+.picker-item-title{font-size:.88rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.picker-item-sub{font-size:.75rem;color:var(--muted)}
 
-    .item-body { flex: 1; min-width: 0; }
-    .item-title { font-weight: 600; font-size: .95rem; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .item-notes { font-size: .82rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-    .item-badge {
-      font-size: .7rem;
-      font-weight: 600;
-      padding: 2px 8px;
-      border-radius: 99px;
-      flex-shrink: 0;
-      text-transform: uppercase;
-      letter-spacing: .04em;
-    }
-    .badge-want { background: var(--accent-light); color: var(--accent); }
-    .badge-done { background: var(--done-light); color: var(--done-color); }
-
-    .filter-row {
-      display: flex;
-      gap: 6px;
-      padding: 10px 16px 0;
-      overflow-x: auto;
-      scrollbar-width: none;
-    }
-    .filter-row::-webkit-scrollbar { display: none; }
-    .filter-chip {
-      white-space: nowrap;
-      padding: 4px 10px;
-      border-radius: 99px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--muted);
-      font-size: .78rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all .15s;
-    }
-    .filter-chip.active { background: var(--text); border-color: var(--text); color: #fff; }
-  </style>
+/* OMDB KEY */
+.omdb-key-wrap{background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:14px}
+.omdb-key-wrap p{font-size:.78rem;color:var(--muted);margin-bottom:8px}
+.omdb-key-row{display:flex;gap:6px}
+</style>
 </head>
 <body>
 
-<header>
-  <span>✨</span>
-  <h1>My Wishlist</h1>
-</header>
+<nav class="nav">
+  <div class="nav-logo">✨ Wishlist</div>
+  <button class="tab-btn active" id="tabFuture" onclick="setTab('future')">Future</button>
+  <button class="tab-btn" id="tabDone" onclick="setTab('done')">Done</button>
+</nav>
 
-<div class="tabs" id="tabs"></div>
-<div class="filter-row" id="filterRow"></div>
+<div class="content" id="content"></div>
 
-<main>
-  <button class="add-btn" id="addBtn">＋ Add item</button>
-  <div class="items-list" id="itemsList"></div>
-</main>
-
-<!-- Modal -->
-<div class="modal-overlay" id="modalOverlay">
-  <div class="modal" id="modal">
-    <h2 id="modalTitle">Add Item</h2>
-    <div class="form-group">
-      <label>Title</label>
-      <input type="text" id="inputTitle" placeholder="What do you want to remember?" />
+<!-- Sheet overlay -->
+<div class="sheet-overlay" id="sheetOverlay" onclick="overlayClick(event)">
+  <div class="sheet" id="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <span class="sheet-head-emoji" id="sheetEmoji"></span>
+      <span class="sheet-title" id="sheetTitle"></span>
+      <button class="sheet-del-btn" id="delBtn" onclick="deleteItem()" title="Delete item" style="display:none">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+          <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+        </svg>
+      </button>
     </div>
-    <div class="form-group">
-      <label>Notes</label>
-      <textarea id="inputNotes" placeholder="Any details, links, or reminders…"></textarea>
-    </div>
-    <div class="form-group">
-      <label>Category</label>
-      <select id="inputCategory"></select>
-    </div>
-    <div class="form-group">
-      <label>Status</label>
-      <div class="status-toggle">
-        <label>
-          <input type="radio" name="status" id="statusWant" value="want" checked />
-          <span>⭐ Want</span>
-        </label>
-        <label>
-          <input type="radio" name="status" id="statusDone" value="done" />
-          <span>✅ Done</span>
-        </label>
-      </div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
-      <button class="btn btn-danger" id="deleteBtn" style="display:none">Delete</button>
-      <button class="btn btn-primary" id="saveBtn">Save</button>
-    </div>
+    <div class="sheet-body" id="sheetBody"></div>
+    <div class="sheet-actions" id="sheetActions"></div>
   </div>
 </div>
 
 <script>
-  const CATEGORIES = [
-    { id: "books",      label: "Books",         emoji: "📚" },
-    { id: "movies",     label: "Movies & TV",   emoji: "🎬" },
-    { id: "restaurants",label: "Restaurants",   emoji: "🍽️" },
-    { id: "travel",     label: "Travel",        emoji: "✈️" },
-    { id: "other",      label: "Other",         emoji: "💡" },
-  ];
+// ─── Constants ────────────────────────────────────────────────────────────────
+const CATS = [
+  {id:'movies',label:'Movies',emoji:'🎬',color:'#8b5cf6',img:'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=480&h=360&fit=crop&q=80',subs:[]},
+  {id:'tv-shows',label:'TV Shows',emoji:'📺',color:'#6366f1',img:'https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?w=480&h=360&fit=crop&q=80',subs:[]},
+  {id:'experiences',label:'Experiences',emoji:'🎭',color:'#f59e0b',img:'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=480&h=360&fit=crop&q=80',subs:[]},
+  {id:'books',label:'Books',emoji:'📚',color:'#10b981',img:'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=480&h=360&fit=crop&q=80',subs:[]},
+  {id:'stuff',label:'Stuff',emoji:'🛍️',color:'#ec4899',img:'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=480&h=360&fit=crop&q=80',subs:[{id:'myself',label:'For Myself'},{id:'others',label:'For Others'}]},
+  {id:'restaurants',label:'Restaurants',emoji:'🍽️',color:'#ef4444',img:'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=480&h=360&fit=crop&q=80',subs:[]},
+  {id:'trips',label:'Trips',emoji:'✈️',color:'#3b82f6',img:'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=480&h=360&fit=crop&q=80',subs:[{id:'israel',label:'Israel'},{id:'abroad',label:'Abroad'}]},
+];
+const BOOK_GENRES = ['Sci-fi','Health','Business','Investing','History','Biography','Philosophy','Geo-Politics','Self Improvement'];
+const YT_KEY = 'AIzaSyCUhLADIiLB4AN5A3wdwXd8X_D8PnOnNBg';
+const OMDB_KEY_DEFAULT = '919ea22c';
 
-  let items = JSON.parse(localStorage.getItem("wishlist_items") || "[]");
-  let activeCategory = CATEGORIES[0].id;
-  let activeFilter = "all"; // all | want | done
-  let editingId = null;
+// ─── State ────────────────────────────────────────────────────────────────────
+let items = JSON.parse(localStorage.getItem('wl_v3') || '[]');
+// migrate old 'tv' category
+items = items.map(i => {
+  if (i.cat !== 'tv') return i;
+  return {...i, cat: i.sub === 'tv-show' ? 'tv-shows' : 'movies', sub: null};
+});
+save();
 
-  function save() {
-    localStorage.setItem("wishlist_items", JSON.stringify(items));
-  }
+let tab = 'future', catId = null, editId = null, formSub = null, searchQuery = '';
 
-  function uid() {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2);
-  }
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function save(){ localStorage.setItem('wl_v3', JSON.stringify(items)); }
 
-  // --- Build tabs ---
-  const tabsEl = document.getElementById("tabs");
-  CATEGORIES.forEach(cat => {
-    const btn = document.createElement("button");
-    btn.className = "tab-btn" + (cat.id === activeCategory ? " active" : "");
-    btn.dataset.id = cat.id;
-    btn.textContent = cat.emoji + " " + cat.label;
-    btn.addEventListener("click", () => {
-      activeCategory = cat.id;
-      activeFilter = "all";
-      renderTabs();
-      renderFilters();
-      renderItems();
-    });
-    tabsEl.appendChild(btn);
+function esc(s){
+  return String(s||'')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2); }
+function getCat(id){ return CATS.find(c=>c.id===id)||CATS[0]; }
+
+function el(tag,cls){
+  const e = document.createElement(tag);
+  if(cls) e.className = cls;
+  return e;
+}
+
+function v(id){ return (document.getElementById(id)||{}).value||''; }
+
+function ytVideoId(url){
+  const m = (url||'').match(/[?&]v=([^&]+)/);
+  return m ? m[1] : null;
+}
+
+function buildTrailerThumb(videoId){
+  const wrap = el('div','trailer-thumb');
+  wrap.onclick = e => {
+    e.stopPropagation();
+    window.open('https://www.youtube.com/watch?v='+videoId,'_blank');
+  };
+  const src = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+  const fallback = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+  wrap.innerHTML = `<img src="${src}" onerror="this.src='${fallback}'" loading="lazy"/>
+    <div class="trailer-play">
+      <svg viewBox="0 0 68 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="68" height="48" rx="10" fill="rgba(0,0,0,.6)"/>
+        <polygon points="26,16 50,24 26,32" fill="white"/>
+      </svg>
+    </div>`;
+  return wrap;
+}
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
+function setTab(t){
+  tab = t; catId = null; editId = null; formSub = null; searchQuery = '';
+  document.getElementById('tabFuture').classList.toggle('active', t==='future');
+  document.getElementById('tabDone').classList.toggle('active', t==='done');
+  renderContent();
+}
+
+function openCat(id){ catId = id; editId = null; formSub = null; searchQuery = ''; renderContent(); }
+function goHome(){ catId = null; editId = null; searchQuery = ''; renderContent(); }
+
+// ─── Root render ──────────────────────────────────────────────────────────────
+function renderContent(){
+  const content = document.getElementById('content');
+  content.innerHTML = '';
+
+  // Search bar always at top
+  const sw = el('div','search-wrap');
+  sw.innerHTML = `<svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input class="search-input" id="searchInput" placeholder="Search all items…" value="${esc(searchQuery)}"/>`;
+  content.appendChild(sw);
+  document.getElementById('searchInput').addEventListener('input', e => {
+    searchQuery = e.target.value;
+    renderSearchOrView(content);
   });
 
-  function renderTabs() {
-    tabsEl.querySelectorAll(".tab-btn").forEach(btn => {
-      btn.classList.toggle("active", btn.dataset.id === activeCategory);
+  renderSearchOrView(content);
+}
+
+function renderSearchOrView(content){
+  // Remove everything after the search bar
+  while(content.children.length > 1) content.removeChild(content.lastChild);
+  if(searchQuery.trim()){ renderSearchResults(content); return; }
+  if(catId){ renderList(content); return; }
+  renderGrid(content);
+}
+
+// ─── Grid ────────────────────────────────────────────────────────────────────
+function renderGrid(content){
+  const grid = el('div','grid');
+  CATS.forEach(c => {
+    const count = items.filter(i => i.cat===c.id && i.status===tab).length;
+    const card = el('div','cat-card');
+    card.innerHTML = `<img src="${c.img}" loading="lazy" alt="${esc(c.label)}"/>
+      <div class="cat-card-overlay"></div>
+      <div class="cat-card-body">
+        <div class="cat-card-label">${c.emoji} ${esc(c.label)}</div>
+        <div class="cat-card-count">${count} item${count===1?'':'s'}</div>
+      </div>`;
+    card.onclick = () => openCat(c.id);
+    grid.appendChild(card);
+  });
+  content.appendChild(grid);
+}
+
+// ─── Search results ───────────────────────────────────────────────────────────
+function renderSearchResults(content){
+  const q = searchQuery.trim().toLowerCase();
+  const matched = items.filter(i => {
+    if(i.status !== tab) return false;
+    return (i.title||'').toLowerCase().includes(q)
+      || (i.notes||'').toLowerCase().includes(q)
+      || (i.synopsis||'').toLowerCase().includes(q)
+      || (i.actors||'').toLowerCase().includes(q)
+      || (i.author||'').toLowerCase().includes(q)
+      || (i.source||'').toLowerCase().includes(q);
+  });
+  const lbl = el('div','search-results-label');
+  lbl.textContent = `${matched.length} result${matched.length===1?'':'s'} for "${searchQuery}"`;
+  content.appendChild(lbl);
+  if(!matched.length){ content.appendChild(emptyState('No items found')); return; }
+  const list = el('div','items-list');
+  matched.forEach(item => {
+    const c = getCat(item.cat);
+    list.appendChild(buildItemCard(item, c));
+  });
+  content.appendChild(list);
+}
+
+// ─── List view ───────────────────────────────────────────────────────────────
+function renderList(content){
+  const c = getCat(catId);
+
+  // Section header
+  const hdr = el('div','section-header');
+  const back = el('button','back-btn');
+  back.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> All`;
+  back.onclick = goHome;
+  const title = el('span','section-title');
+  title.textContent = c.emoji+' '+c.label;
+  const addBtn = el('button','add-btn');
+  addBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add`;
+  addBtn.onclick = () => openForm(null);
+  hdr.appendChild(back); hdr.appendChild(title); hdr.appendChild(addBtn);
+  content.appendChild(hdr);
+
+  // Sub tabs
+  if(c.subs.length){
+    const stabs = el('div','sub-tabs');
+    const allTab = el('button','sub-tab'+(formSub===null?' active':''));
+    allTab.textContent = 'All';
+    allTab.onclick = () => { formSub=null; renderSearchOrView(content); };
+    stabs.appendChild(allTab);
+    c.subs.forEach(s => {
+      const st = el('button','sub-tab'+(formSub===s.id?' active':''));
+      st.textContent = s.label;
+      st.onclick = () => { formSub=s.id; renderSearchOrView(content); };
+      stabs.appendChild(st);
     });
+    content.appendChild(stabs);
   }
 
-  // --- Filters ---
-  const filterRow = document.getElementById("filterRow");
-  const FILTERS = [
-    { id: "all",  label: "All" },
-    { id: "want", label: "⭐ Want" },
-    { id: "done", label: "✅ Done" },
-  ];
-  FILTERS.forEach(f => {
-    const chip = document.createElement("button");
-    chip.className = "filter-chip" + (f.id === activeFilter ? " active" : "");
-    chip.dataset.id = f.id;
-    chip.textContent = f.label;
-    chip.addEventListener("click", () => {
-      activeFilter = f.id;
-      renderFilters();
-      renderItems();
-    });
-    filterRow.appendChild(chip);
-  });
+  // Filter items
+  let list = items.filter(i => i.cat===catId && i.status===tab);
+  if(formSub) list = list.filter(i => i.sub===formSub);
+  if(!list.length){ content.appendChild(emptyState('No items yet')); return; }
+  const ul = el('div','items-list');
+  list.forEach(item => ul.appendChild(buildItemCard(item, c)));
+  content.appendChild(ul);
+}
 
-  function renderFilters() {
-    filterRow.querySelectorAll(".filter-chip").forEach(chip => {
-      chip.classList.toggle("active", chip.dataset.id === activeFilter);
-    });
+// ─── Item card builder ────────────────────────────────────────────────────────
+function buildItemCard(item, c){
+  const card = el('div','item-card');
+  card.onclick = () => openDetail(item.id);
+
+  const inner = el('div','item-card-inner');
+
+  // Poster for movies, tv-shows, books
+  if((c.id==='movies'||c.id==='tv-shows'||c.id==='books') && item.poster && item.poster!=='N/A'){
+    const img = document.createElement('img');
+    img.className = 'item-card-poster';
+    img.src = item.poster;
+    img.loading = 'lazy';
+    img.alt = '';
+    inner.appendChild(img);
   }
 
-  // --- Populate category select ---
-  const selectCat = document.getElementById("inputCategory");
-  CATEGORIES.forEach(cat => {
-    const opt = document.createElement("option");
-    opt.value = cat.id;
-    opt.textContent = cat.emoji + " " + cat.label;
-    selectCat.appendChild(opt);
-  });
+  const body = el('div','item-card-body');
 
-  // --- Render items ---
-  const itemsList = document.getElementById("itemsList");
+  // Title
+  const titleEl = el('div','item-card-title');
+  titleEl.textContent = item.title||'Untitled';
+  body.appendChild(titleEl);
 
-  function renderItems() {
-    const filtered = items.filter(it => {
-      if (it.category !== activeCategory) return false;
-      if (activeFilter === "want") return it.status === "want";
-      if (activeFilter === "done") return it.status === "done";
-      return true;
-    });
+  // Meta row: year, rating, language, pages, author
+  const meta = el('div','item-card-meta');
+  if(item.year) meta.insertAdjacentHTML('beforeend',`<span class="badge badge-year">${esc(item.year)}</span>`);
+  if(item.imdbRating&&item.imdbRating!=='N/A') meta.insertAdjacentHTML('beforeend',`<span class="badge badge-imdb">⭐ ${esc(item.imdbRating)}</span>`);
+  if(c.id==='books'&&item.author) meta.insertAdjacentHTML('beforeend',`<span class="badge badge-lang">${esc(item.author)}</span>`);
+  if(c.id==='books'&&item.pages) meta.insertAdjacentHTML('beforeend',`<span class="badge badge-pages">${esc(item.pages)}p</span>`);
+  if(item.language&&item.language!=='N/A'&&c.id!=='books') meta.insertAdjacentHTML('beforeend',`<span class="badge badge-lang">${esc(item.language)}</span>`);
+  if(meta.children.length) body.appendChild(meta);
 
-    itemsList.innerHTML = "";
+  // Fit badges for movies/tv-shows
+  if((c.id==='movies'||c.id==='tv-shows')&&(item.forKids||item.forWife)){
+    const fitRow = el('div','item-card-meta'); fitRow.style.marginTop='4px';
+    if(item.forKids) fitRow.insertAdjacentHTML('beforeend','<span class="fit-badge fit-kids">👦 Kids</span>');
+    if(item.forWife) fitRow.insertAdjacentHTML('beforeend','<span class="fit-badge fit-wife">💕 Wife</span>');
+    body.appendChild(fitRow);
+  }
 
-    if (filtered.length === 0) {
-      const cat = CATEGORIES.find(c => c.id === activeCategory);
-      itemsList.innerHTML = `
-        <div class="empty-state">
-          <span class="emoji">${cat.emoji}</span>
-          <p>No ${activeFilter === "all" ? "" : activeFilter + " "}items in ${cat.label} yet.<br>Tap <strong>+ Add item</strong> to get started.</p>
+  // Notes (books: nothing; movies/tv: notes only, not synopsis)
+  const notes = c.id==='books' ? '' : (item.notes||item.reasons||'');
+  if(notes){
+    const n = el('div','item-card-notes');
+    n.textContent = notes;
+    body.appendChild(n);
+  }
+
+  // Genre tags for books
+  if(c.id==='books'&&item.genres&&item.genres.length){
+    const gw = el('div','item-card-meta'); gw.style.marginTop='6px';
+    item.genres.forEach(g => gw.insertAdjacentHTML('beforeend',`<span class="genre-pill on" style="pointer-events:none">${esc(g)}</span>`));
+    body.appendChild(gw);
+  }
+
+  inner.appendChild(body);
+  card.appendChild(inner);
+
+  // Footer
+  const hasSource = item.source && item.source!=='N/A' && item.source!=='';
+  const hasKindle = c.id==='books' && item.kindleLink;
+  const isFuture = item.status==='future';
+  if(isFuture||hasSource||hasKindle){
+    const footer = el('div','item-card-footer');
+    if(hasSource){
+      const st = el('span','source-tag');
+      st.textContent = 'via '+item.source;
+      footer.appendChild(st);
+    }
+    if(hasKindle){
+      const kl = document.createElement('a');
+      kl.className='kindle-link'; kl.href=item.kindleLink; kl.target='_blank'; kl.rel='noopener';
+      kl.onclick = e => e.stopPropagation();
+      kl.innerHTML='📖 Kindle';
+      footer.appendChild(kl);
+    }
+    if(isFuture){
+      const jdi = el('button','jdi-btn');
+      jdi.textContent = '✓ Just Did It!';
+      jdi.onclick = e => { e.stopPropagation(); markDone(item.id); };
+      footer.appendChild(jdi);
+    } else if(item.doneDate){
+      const done = el('span','jdi-done-tag');
+      done.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> ${esc(item.doneDate)}`;
+      footer.appendChild(done);
+    }
+    card.appendChild(footer);
+  }
+
+  return card;
+}
+
+function emptyState(msg){
+  const d = el('div','empty');
+  d.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0H4"/></svg><p>${esc(msg)}</p>`;
+  return d;
+}
+
+// ─── Mark done ────────────────────────────────────────────────────────────────
+function markDone(id){
+  const item = items.find(i=>i.id===id);
+  if(!item) return;
+  item.status = 'done';
+  item.doneDate = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  save(); renderContent();
+}
+
+// ─── Delete ───────────────────────────────────────────────────────────────────
+function deleteItem(){
+  if(!editId) return;
+  if(!confirm('Delete this item?')) return;
+  items = items.filter(i=>i.id!==editId);
+  save(); closeSheet(); renderContent();
+}
+
+// ─── Detail view ──────────────────────────────────────────────────────────────
+function openDetail(id){
+  const item = items.find(i=>i.id===id);
+  if(!item) return;
+  editId = id;
+  const c = getCat(item.cat);
+
+  document.getElementById('sheetEmoji').textContent = c.emoji;
+  document.getElementById('sheetTitle').textContent = item.title||'Untitled';
+  document.getElementById('delBtn').style.display = 'flex';
+
+  const body = document.getElementById('sheetBody');
+  body.innerHTML = '';
+
+  // Top: poster + info
+  const hasMedia = (c.id==='movies'||c.id==='tv-shows'||c.id==='books') && item.poster && item.poster!=='N/A';
+  if(hasMedia){
+    const top = el('div','detail-top');
+    const img = document.createElement('img');
+    img.className='detail-poster'; img.src=item.poster; img.alt='';
+    top.appendChild(img);
+    top.appendChild(buildDetailInfo(item,c));
+    body.appendChild(top);
+  } else {
+    body.appendChild(buildDetailInfo(item,c));
+  }
+
+  // Synopsis
+  const synopsis = item.synopsis || item.description;
+  if(synopsis){
+    appendSection(body,'Synopsis',synopsis);
+  }
+
+  // Actors
+  if(item.actors) appendSection(body,'Actors',item.actors);
+
+  // Notes
+  const notes = item.notes||item.reasons||'';
+  if(notes && notes!==synopsis) appendSection(body,'Notes',notes);
+
+  // Source
+  if(item.source&&item.source!=='N/A'&&item.source!==''){
+    appendSection(body,'Recommended by',item.source);
+  }
+
+  // Genres
+  if(c.id==='books'&&item.genres&&item.genres.length){
+    const s = el('div','detail-section');
+    const sl = el('div','detail-section-label'); sl.textContent='Genres'; s.appendChild(sl);
+    const gw = el('div','genre-wrap');
+    item.genres.forEach(g => gw.insertAdjacentHTML('beforeend',`<span class="genre-pill on" style="pointer-events:none">${esc(g)}</span>`));
+    s.appendChild(gw); body.appendChild(s);
+  }
+
+  // Kindle
+  if(c.id==='books'&&item.kindleLink){
+    const s = el('div','detail-section');
+    const sl = el('div','detail-section-label'); sl.textContent='Buy'; s.appendChild(sl);
+    const a = document.createElement('a');
+    a.href=item.kindleLink; a.target='_blank'; a.rel='noopener';
+    a.className='kindle-link'; a.textContent='📖 Find on Kindle';
+    s.appendChild(a); body.appendChild(s);
+  }
+
+  // Trailer
+  if(item.trailer){
+    const vid = ytVideoId(item.trailer);
+    if(vid){
+      const s = el('div','detail-section');
+      const sl = el('div','detail-section-label'); sl.textContent='Trailer'; s.appendChild(sl);
+      s.appendChild(buildTrailerThumb(vid));
+      body.appendChild(s);
+    }
+  }
+
+  const actions = document.getElementById('sheetActions');
+  actions.innerHTML = '';
+  const cancelBtn = el('button','sheet-cancel');
+  cancelBtn.textContent = 'Close'; cancelBtn.onclick = closeSheet;
+  const editBtn = el('button','sheet-save');
+  editBtn.textContent = 'Edit'; editBtn.onclick = () => openForm(id);
+  actions.appendChild(cancelBtn); actions.appendChild(editBtn);
+
+  openSheet();
+}
+
+function appendSection(body, label, value){
+  const s = el('div','detail-section');
+  const sl = el('div','detail-section-label'); sl.textContent=label; s.appendChild(sl);
+  const sv = el('div','detail-section-value'); sv.textContent=value; s.appendChild(sv);
+  body.appendChild(s);
+}
+
+function buildDetailInfo(item, c){
+  const info = el('div','detail-info');
+  const titleEl = el('div','detail-title'); titleEl.textContent=item.title||'Untitled'; info.appendChild(titleEl);
+  const meta = el('div','detail-meta');
+  if(item.year) meta.insertAdjacentHTML('beforeend',`<span class="badge badge-year">${esc(item.year)}</span>`);
+  if(item.imdbRating&&item.imdbRating!=='N/A') meta.insertAdjacentHTML('beforeend',`<span class="badge badge-imdb">⭐ ${esc(item.imdbRating)}</span>`);
+  if(item.language&&item.language!=='N/A') meta.insertAdjacentHTML('beforeend',`<span class="badge badge-lang">${esc(item.language)}</span>`);
+  if(item.pages) meta.insertAdjacentHTML('beforeend',`<span class="badge badge-pages">${esc(item.pages)}p</span>`);
+  if(item.author) meta.insertAdjacentHTML('beforeend',`<span class="badge badge-lang">${esc(item.author)}</span>`);
+  if(item.forKids) meta.insertAdjacentHTML('beforeend','<span class="fit-badge fit-kids">👦 Kids</span>');
+  if(item.forWife) meta.insertAdjacentHTML('beforeend','<span class="fit-badge fit-wife">💕 Wife</span>');
+  if(meta.innerHTML) info.appendChild(meta);
+  return info;
+}
+
+// ─── Form ─────────────────────────────────────────────────────────────────────
+let selectedGenresList = [];
+
+function openForm(id){
+  editId = id;
+  const item = id ? items.find(i=>i.id===id) : null;
+  const c = getCat(catId||(item&&item.cat)||'movies');
+  if(item) catId = item.cat;
+
+  document.getElementById('sheetEmoji').textContent = c.emoji;
+  document.getElementById('sheetTitle').textContent = id ? 'Edit '+c.label : 'Add '+c.label;
+  document.getElementById('delBtn').style.display = 'none';
+
+  const body = document.getElementById('sheetBody');
+  body.innerHTML = '';
+  buildForm(body, c, item);
+
+  const actions = document.getElementById('sheetActions');
+  actions.innerHTML = '';
+  const cancelBtn = el('button','sheet-cancel');
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.onclick = () => { if(id) openDetail(id); else closeSheet(); };
+  const saveBtn = el('button','sheet-save');
+  saveBtn.textContent = 'Save'; saveBtn.onclick = saveItem;
+  actions.appendChild(cancelBtn); actions.appendChild(saveBtn);
+
+  openSheet();
+}
+
+function buildForm(body, c, item){
+  selectedGenresList = (item&&item.genres) ? [...item.genres] : [];
+
+  // Smart Update button
+  if(c.id==='movies'||c.id==='tv-shows'||c.id==='books'){
+    const sb = el('button','smart-btn');
+    sb.id='smartBtn'; sb.type='button';
+    sb.textContent = c.id==='books' ? '📚 Smart Update from Open Library'
+      : c.id==='tv-shows' ? '📺 Smart Update from TVmaze'
+      : '🎬 Smart Update from IMDb';
+    sb.onclick = smartUpdate;
+    body.appendChild(sb);
+    const ss = el('div','smart-status'); ss.id='smartStatus'; body.appendChild(ss);
+    // OMDB key if missing (movies only)
+    if(c.id==='movies' && !localStorage.getItem('omdb_key')){
+      const kw = el('div','omdb-key-wrap'); kw.id='omdbKeyWrap';
+      kw.innerHTML=`<p>Enter your OMDB API key to enable Smart Update</p>
+        <div class="omdb-key-row">
+          <input id="omdbKeyInput" class="form-input" style="flex:1" placeholder="API key…"/>
+          <button class="poster-url-btn" type="button" onclick="saveOmdbKey()">Save</button>
         </div>`;
-      return;
+      body.appendChild(kw);
     }
+    const pc = el('div'); pc.id='pickerContainer'; body.appendChild(pc);
+  }
 
-    filtered.forEach(item => {
-      const card = document.createElement("div");
-      card.className = "item-card" + (item.status === "done" ? " done" : "");
-      card.innerHTML = `
-        <div class="item-check">${item.status === "done" ? "✓" : ""}</div>
-        <div class="item-body">
-          <div class="item-title">${escHtml(item.title)}</div>
-          ${item.notes ? `<div class="item-notes">${escHtml(item.notes)}</div>` : ""}
-        </div>
-        <span class="item-badge ${item.status === "done" ? "badge-done" : "badge-want"}">${item.status}</span>
-      `;
-      card.addEventListener("click", () => openEdit(item.id));
-      itemsList.appendChild(card);
+  // Title
+  appendFormRow(body,'Title','f-title','input',item&&item.title||'');
+
+  // Poster (movies, tv-shows, books)
+  if(c.id==='movies'||c.id==='tv-shows'||c.id==='books'){
+    body.appendChild(buildPosterSection(item&&item.poster));
+  }
+
+  // Sub category
+  if(c.subs.length){
+    const subRow = el('div','form-row');
+    subRow.innerHTML=`<label>Category</label><select class="form-select" id="f-sub">
+      ${c.subs.map(s=>`<option value="${s.id}"${item&&item.sub===s.id?' selected':''}>${s.label}</option>`).join('')}
+    </select>`;
+    body.appendChild(subRow);
+  }
+
+  // Year
+  appendFormRow(body,'Year','f-year','input',item&&item.year||'');
+
+  // Movies/TV fields
+  if(c.id==='movies'||c.id==='tv-shows'){
+    const r1 = el('div','form-row-inline');
+    const lr = el('div','form-row'); lr.innerHTML=`<label>Language</label><input class="form-input" id="f-language" value="${esc(item&&item.language||'')}"/>`;
+    const rr = el('div','form-row'); rr.innerHTML=`<label>IMDb Rating</label><input class="form-input" id="f-rating" value="${esc(item&&item.imdbRating||'')}"/>`;
+    r1.appendChild(lr); r1.appendChild(rr); body.appendChild(r1);
+
+    appendFormRow(body,'Actors','f-actors','input',item&&item.actors||'');
+    appendFormRow(body,'Synopsis','f-synopsis','textarea',item&&item.synopsis||'');
+
+    // Kids/Wife checkboxes
+    const cr = el('div','check-row');
+    cr.innerHTML=`<label class="check-item"><input type="checkbox" id="f-kids"${item&&item.forKids?' checked':''}/> 👦 Good for kids</label>
+      <label class="check-item"><input type="checkbox" id="f-wife"${item&&item.forWife?' checked':''}/> 💕 Good for wife</label>`;
+    body.appendChild(cr);
+
+    appendFormRow(body,'Trailer URL (YouTube)','f-trailer','input',item&&item.trailer||'');
+
+    // Show saved trailer thumb
+    if(item&&item.trailer){
+      const vid = ytVideoId(item.trailer);
+      if(vid){
+        const tw = el('div'); tw.style.marginBottom='14px';
+        tw.appendChild(buildTrailerThumb(vid));
+        body.appendChild(tw);
+      }
+    }
+  }
+
+  // Books fields
+  if(c.id==='books'){
+    appendFormRow(body,'Author','f-author','input',item&&item.author||'');
+    const r2 = el('div','form-row-inline');
+    const pr = el('div','form-row'); pr.innerHTML=`<label>Pages</label><input class="form-input" id="f-pages" value="${esc(item&&item.pages||'')}"/>`;
+    const lr2 = el('div','form-row'); lr2.innerHTML=`<label>Language</label><input class="form-input" id="f-language" value="${esc(item&&item.language||'')}"/>`;
+    r2.appendChild(pr); r2.appendChild(lr2); body.appendChild(r2);
+    appendFormRow(body,'Synopsis / Notes','f-synopsis','textarea',item&&(item.synopsis||item.description||item.notes)||'');
+    appendFormRow(body,'Kindle / Buy Link','f-kindle','input',item&&item.kindleLink||'');
+    // Genre pills
+    const genreRow = el('div','form-row');
+    genreRow.innerHTML='<label>Genres</label>';
+    const gw = el('div','genre-wrap'); gw.id='genreWrap';
+    BOOK_GENRES.forEach(g => {
+      const pill = el('button','genre-pill'+(selectedGenresList.includes(g)?' on':''));
+      pill.textContent=g; pill.type='button';
+      pill.onclick = () => { pill.classList.toggle('on'); toggleGenre(g); };
+      gw.appendChild(pill);
     });
+    genreRow.appendChild(gw); body.appendChild(genreRow);
   }
 
-  function escHtml(str) {
-    return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  // Generic notes (not movies/tv/books)
+  if(c.id!=='movies'&&c.id!=='tv-shows'&&c.id!=='books'){
+    appendFormRow(body,'Notes','f-notes','textarea',item&&(item.notes||item.description||item.reasons)||'');
   }
 
-  // --- Modal logic ---
-  const overlay = document.getElementById("modalOverlay");
-  const modalTitle = document.getElementById("modalTitle");
-  const inputTitle = document.getElementById("inputTitle");
-  const inputNotes = document.getElementById("inputNotes");
-  const deleteBtn = document.getElementById("deleteBtn");
+  // Source of recommendation
+  const sourceVal = (item&&item.source&&item.source!=='N/A') ? item.source : '';
+  appendFormRow(body,'Source of Recommendation (optional)','f-source','input',sourceVal);
+}
 
-  document.getElementById("addBtn").addEventListener("click", () => openAdd());
-  document.getElementById("cancelBtn").addEventListener("click", closeModal);
-  overlay.addEventListener("click", e => { if (e.target === overlay) closeModal(); });
+function appendFormRow(body, label, inputId, type, value){
+  const row = el('div','form-row');
+  if(type==='textarea'){
+    row.innerHTML=`<label>${label}</label><textarea class="form-textarea" id="${inputId}">${esc(value)}</textarea>`;
+  } else {
+    row.innerHTML=`<label>${label}</label><input class="form-input" id="${inputId}" value="${esc(value)}"/>`;
+  }
+  body.appendChild(row);
+}
 
-  document.getElementById("saveBtn").addEventListener("click", () => {
-    const title = inputTitle.value.trim();
-    if (!title) { inputTitle.focus(); return; }
-    const status = document.querySelector('input[name="status"]:checked').value;
-    const category = selectCat.value;
-    const notes = inputNotes.value.trim();
+// ─── Poster section ───────────────────────────────────────────────────────────
+function buildPosterSection(posterUrl){
+  const wrap = el('div','poster-section');
+  const lbl = document.createElement('label'); lbl.textContent='Poster'; wrap.appendChild(lbl);
+  const inner = el('div'); inner.id='posterSection'; wrap.appendChild(inner);
 
-    if (editingId) {
-      const idx = items.findIndex(i => i.id === editingId);
-      if (idx !== -1) items[idx] = { ...items[idx], title, notes, status, category };
-    } else {
-      items.unshift({ id: uid(), title, notes, status, category, createdAt: Date.now() });
+  function showUploadArea(){
+    inner.innerHTML=`<div class="poster-upload-area" id="posterDropZone">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" style="color:var(--muted)"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+      <p>Click to upload or paste URL below</p>
+      <input type="file" id="posterFileInput" accept="image/*" style="display:none"/>
+      <div class="poster-url-row">
+        <input class="poster-url-input" id="posterUrlInput" placeholder="https://…"/>
+        <button class="poster-url-btn" type="button" onclick="setPosterFromUrl()">Set</button>
+      </div>
+    </div>`;
+    document.getElementById('posterDropZone').onclick = function(e){
+      if(e.target.tagName==='INPUT'||e.target.tagName==='BUTTON') return;
+      document.getElementById('posterFileInput').click();
+    };
+    document.getElementById('posterFileInput').onchange = function(){
+      const file=this.files[0]; if(!file) return;
+      const reader=new FileReader();
+      reader.onload=ev=>setFormPoster(ev.target.result);
+      reader.readAsDataURL(file);
+    };
+  }
+
+  function showPoster(url){
+    inner.innerHTML='';
+    const preview=el('div','poster-preview');
+    const img=document.createElement('img'); img.src=url; img.alt='Poster';
+    img.onerror=()=>showUploadArea();
+    preview.appendChild(img);
+    const rm=el('button','poster-remove'); rm.type='button'; rm.textContent='×';
+    rm.onclick=()=>{ inner.dataset.url=''; showUploadArea(); };
+    preview.appendChild(rm);
+    inner.appendChild(preview);
+    inner.dataset.url=url;
+  }
+
+  inner._showPoster = showPoster;
+
+  if(posterUrl&&posterUrl!=='N/A') showPoster(posterUrl);
+  else showUploadArea();
+
+  return wrap;
+}
+
+window.setPosterFromUrl = function(){
+  const url=(document.getElementById('posterUrlInput')||{}).value||'';
+  if(url) setFormPoster(url);
+};
+
+function setFormPoster(url){
+  const inner=document.getElementById('posterSection');
+  if(!inner) return;
+  inner.dataset.url=url;
+  if(inner._showPoster) inner._showPoster(url);
+}
+
+function toggleGenre(g){
+  const idx=selectedGenresList.indexOf(g);
+  if(idx===-1) selectedGenresList.push(g); else selectedGenresList.splice(idx,1);
+}
+function selectedGenres(){ return [...selectedGenresList]; }
+
+// ─── Save item ────────────────────────────────────────────────────────────────
+function saveItem(){
+  const c = getCat(catId);
+  const titleVal = v('f-title').trim();
+  if(!titleVal){ document.getElementById('f-title').focus(); return; }
+
+  const posterEl = document.getElementById('posterSection');
+  const posterUrl = posterEl ? (posterEl.dataset.url||'') : '';
+
+  const existing = editId ? items.find(i=>i.id===editId) : null;
+
+  const obj = {
+    id: editId||uid(),
+    cat: catId,
+    status: existing ? existing.status : 'future',
+    doneDate: existing ? existing.doneDate : null,
+    title: titleVal,
+    year: v('f-year'),
+    source: v('f-source')||'N/A',
+    poster: posterUrl || (existing ? existing.poster : null),
+  };
+
+  if(c.subs.length) obj.sub = v('f-sub')||c.subs[0].id;
+
+  if(c.id==='movies'||c.id==='tv-shows'){
+    obj.language = v('f-language');
+    obj.imdbRating = v('f-rating');
+    obj.actors = v('f-actors');
+    obj.synopsis = v('f-synopsis');
+    obj.trailer = v('f-trailer')||(existing?existing.trailer:null);
+    obj.forKids = document.getElementById('f-kids')?.checked||false;
+    obj.forWife = document.getElementById('f-wife')?.checked||false;
+  }
+  if(c.id==='books'){
+    obj.author = v('f-author');
+    obj.pages = v('f-pages');
+    obj.language = v('f-language');
+    obj.synopsis = v('f-synopsis');
+    obj.kindleLink = v('f-kindle');
+    obj.genres = selectedGenres();
+  }
+  if(c.id!=='movies'&&c.id!=='tv-shows'&&c.id!=='books'){
+    obj.notes = v('f-notes');
+  }
+
+  if(editId && existing){ Object.assign(existing,obj); }
+  else { items.push(obj); }
+  save(); closeSheet(); renderContent();
+}
+
+// ─── Smart Update ──────────────────────────────────────────────────────────────
+function smartUpdate(){
+  const title = v('f-title').trim();
+  if(!title){ document.getElementById('f-title').focus(); return; }
+  const c = getCat(catId);
+  if(c.id==='tv-shows'){ searchTvmaze(title); return; }
+  if(c.id==='books'){ searchOpenLibrary(title); return; }
+  searchOmdb(localStorage.getItem('omdb_key')||OMDB_KEY_DEFAULT, title);
+}
+
+function setSmartStatus(msg){ const e=document.getElementById('smartStatus'); if(e) e.textContent=msg; }
+
+function saveOmdbKey(){
+  const k=v('omdbKeyInput').trim(); if(!k) return;
+  localStorage.setItem('omdb_key',k);
+  const w=document.getElementById('omdbKeyWrap'); if(w) w.remove();
+}
+
+// ── OMDB ──────────────────────────────────────────────────────────────────────
+async function searchOmdb(key, title){
+  setSmartStatus('Searching…');
+  document.getElementById('pickerContainer').innerHTML='';
+  try{
+    const res=await fetch(`https://www.omdbapi.com/?s=${encodeURIComponent(title)}&type=movie&apikey=${key}`);
+    const data=await res.json();
+    if(data.Response==='False'){ setSmartStatus(data.Error||'Not found'); return; }
+    const results=data.Search||[];
+    if(!results.length){ setSmartStatus('No results'); return; }
+    if(results.length===1){ setSmartStatus('Loading…'); fetchOmdbById(key,results[0].imdbID); return; }
+    setSmartStatus('Select a result:');
+    showPicker(results.slice(0,8).map(r=>({
+      poster: r.Poster&&r.Poster!=='N/A'?r.Poster:'',
+      title: r.Title, sub: r.Year,
+      onclick: ()=>{ document.getElementById('pickerContainer').innerHTML=''; setSmartStatus('Loading…'); fetchOmdbById(key,r.imdbID); }
+    })));
+  } catch(e){ setSmartStatus('Error: '+e.message); }
+}
+
+async function fetchOmdbById(key, imdbId){
+  try{
+    const res=await fetch(`https://www.omdbapi.com/?i=${imdbId}&apikey=${key}`);
+    const data=await res.json();
+    applyOmdbData(data);
+  } catch(e){ setSmartStatus('Error: '+e.message); }
+}
+
+async function applyOmdbData(data){
+  setField('f-title',data.Title);
+  setField('f-year',data.Year);
+  setField('f-language',data.Language);
+  setField('f-rating',data.imdbRating);
+  setField('f-actors',data.Actors);
+  setField('f-synopsis',data.Plot&&data.Plot!=='N/A'?data.Plot:'');
+  if(data.Poster&&data.Poster!=='N/A') setFormPoster(data.Poster);
+  setSmartStatus('Applied! Fetching trailer…');
+  await fetchTrailer((data.Title||'')+' '+(data.Year||'')+' official trailer');
+}
+
+// ── TVmaze ────────────────────────────────────────────────────────────────────
+async function searchTvmaze(title){
+  setSmartStatus('Searching TVmaze…');
+  document.getElementById('pickerContainer').innerHTML='';
+  try{
+    const res=await fetch(`https://api.tvmaze.com/search/shows?q=${encodeURIComponent(title)}`);
+    const results=await res.json();
+    if(!results.length){ setSmartStatus('Not found'); return; }
+    if(results.length===1){ setSmartStatus('Loading…'); fetchTvmazeById(results[0].show.id); return; }
+    setSmartStatus('Select a result:');
+    showPicker(results.slice(0,8).map(r=>({
+      poster: r.show.image&&r.show.image.medium||'',
+      title: r.show.name,
+      sub: (r.show.premiered?r.show.premiered.slice(0,4):'')+(r.show.network?' · '+r.show.network.name:''),
+      onclick: ()=>{ document.getElementById('pickerContainer').innerHTML=''; setSmartStatus('Loading…'); fetchTvmazeById(r.show.id); }
+    })));
+  } catch(e){ setSmartStatus('Error: '+e.message); }
+}
+
+async function fetchTvmazeById(showId){
+  try{
+    const [showRes,castRes]=await Promise.all([
+      fetch(`https://api.tvmaze.com/shows/${showId}`),
+      fetch(`https://api.tvmaze.com/shows/${showId}/cast`)
+    ]);
+    const show=await showRes.json();
+    const cast=await castRes.json();
+    const year=show.premiered?show.premiered.slice(0,4):'';
+    setField('f-title',show.name);
+    setField('f-year',year);
+    setField('f-language',show.language);
+    setField('f-actors',cast.slice(0,5).map(c=>c.person&&c.person.name).filter(Boolean).join(', '));
+    setField('f-synopsis',show.summary?show.summary.replace(/<[^>]+>/g,''):'');
+    const poster=show.image&&(show.image.original||show.image.medium);
+    if(poster) setFormPoster(poster);
+    setSmartStatus('Applied! Fetching trailer…');
+    await fetchTrailer((show.name||'')+' '+year+' official trailer');
+  } catch(e){ setSmartStatus('Error: '+e.message); }
+}
+
+// ── Open Library ──────────────────────────────────────────────────────────────
+async function searchOpenLibrary(title){
+  setSmartStatus('Searching Open Library…');
+  document.getElementById('pickerContainer').innerHTML='';
+  try{
+    const res=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(title)}&fields=key,title,author_name,first_publish_year,cover_i,number_of_pages_median,language&limit=8`);
+    const data=await res.json();
+    const docs=data.docs||[];
+    if(!docs.length){ setSmartStatus('Not found'); return; }
+    if(docs.length===1){ setSmartStatus('Loading…'); fetchAndApplyBook(docs[0]); return; }
+    setSmartStatus('Select a result:');
+    showPicker(docs.map(book=>({
+      poster: book.cover_i?`https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg`:'',
+      title: book.title,
+      sub: (book.author_name?book.author_name[0]:'')+(book.first_publish_year?' · '+book.first_publish_year:''),
+      onclick: ()=>{ document.getElementById('pickerContainer').innerHTML=''; setSmartStatus('Loading…'); fetchAndApplyBook(book); }
+    })));
+  } catch(e){ setSmartStatus('Error: '+e.message); }
+}
+
+async function fetchAndApplyBook(book){
+  let description='';
+  if(book.key){
+    try{
+      const wRes=await fetch(`https://openlibrary.org${book.key}.json`);
+      const wData=await wRes.json();
+      if(wData.description) description=typeof wData.description==='string'?wData.description:(wData.description.value||'');
+    } catch(e){}
+  }
+  setField('f-title',book.title);
+  setField('f-author',book.author_name&&book.author_name[0]||'');
+  setField('f-year',book.first_publish_year||'');
+  setField('f-pages',book.number_of_pages_median||'');
+  const langs=book.language||[];
+  setField('f-language',langs.includes('eng')?'English':langs[0]||'');
+  if(description) setField('f-synopsis',description);
+  const kindleQ=encodeURIComponent(book.title+(book.author_name?' '+book.author_name[0]:''));
+  setField('f-kindle',`https://www.amazon.com/s?k=${kindleQ}&i=digital-text`);
+  if(book.cover_i) setFormPoster(`https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg`);
+  setSmartStatus('Done!');
+}
+
+// ── Shared picker / trailer helpers ───────────────────────────────────────────
+function showPicker(items){
+  const container=document.getElementById('pickerContainer');
+  container.innerHTML='';
+  const list=el('div','picker-list');
+  items.forEach(item=>{
+    const row=el('div','picker-item');
+    row.innerHTML=`<img src="${esc(item.poster)}" onerror="this.style.display='none'" loading="lazy"/>
+      <div class="picker-item-info">
+        <div class="picker-item-title">${esc(item.title)}</div>
+        <div class="picker-item-sub">${esc(item.sub||'')}</div>
+      </div>`;
+    row.onclick=item.onclick;
+    list.appendChild(row);
+  });
+  container.appendChild(list);
+}
+
+async function fetchTrailer(query){
+  try{
+    const res=await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=1&key=${YT_KEY}`);
+    const data=await res.json();
+    const vid=data.items&&data.items[0]&&data.items[0].id&&data.items[0].id.videoId;
+    if(vid){
+      const url='https://www.youtube.com/watch?v='+vid;
+      setField('f-trailer',url);
+      // Insert thumb after trailer input row
+      const trailerInput=document.getElementById('f-trailer');
+      if(trailerInput){
+        const parent=trailerInput.closest('.form-row');
+        if(parent){
+          // Remove any existing thumb
+          if(parent.nextSibling&&parent.nextSibling._isTrailerThumb) parent.nextSibling.remove();
+          const thumbWrap=el('div'); thumbWrap.style.marginBottom='14px'; thumbWrap._isTrailerThumb=true;
+          thumbWrap.appendChild(buildTrailerThumb(vid));
+          parent.after(thumbWrap);
+        }
+      }
     }
-    save();
-    closeModal();
-    renderItems();
-  });
+    setSmartStatus('Done!');
+  } catch(e){ setSmartStatus('Done (no trailer found)'); }
+}
 
-  deleteBtn.addEventListener("click", () => {
-    if (!editingId) return;
-    items = items.filter(i => i.id !== editingId);
-    save();
-    closeModal();
-    renderItems();
-  });
+function setField(id, value){
+  const el=document.getElementById(id);
+  if(el&&value!==undefined&&value!==null) el.value=value;
+}
 
-  function openAdd() {
-    editingId = null;
-    modalTitle.textContent = "Add Item";
-    inputTitle.value = "";
-    inputNotes.value = "";
-    selectCat.value = activeCategory;
-    document.getElementById("statusWant").checked = true;
-    deleteBtn.style.display = "none";
-    overlay.classList.add("open");
-    setTimeout(() => inputTitle.focus(), 100);
-  }
+// ─── Sheet open/close ─────────────────────────────────────────────────────────
+function openSheet(){
+  document.getElementById('sheetOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeSheet(){
+  editId=null;
+  document.getElementById('sheetOverlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+function overlayClick(e){
+  if(e.target===document.getElementById('sheetOverlay')) closeSheet();
+}
 
-  function openEdit(id) {
-    const item = items.find(i => i.id === id);
-    if (!item) return;
-    editingId = id;
-    modalTitle.textContent = "Edit Item";
-    inputTitle.value = item.title;
-    inputNotes.value = item.notes || "";
-    selectCat.value = item.category;
-    document.querySelector(`input[name="status"][value="${item.status}"]`).checked = true;
-    deleteBtn.style.display = "block";
-    overlay.classList.add("open");
-    setTimeout(() => inputTitle.focus(), 100);
-  }
-
-  function closeModal() {
-    overlay.classList.remove("open");
-    editingId = null;
-  }
-
-  // Initial render
-  renderItems();
+// ─── Init ─────────────────────────────────────────────────────────────────────
+renderContent();
 </script>
 </body>
 </html>

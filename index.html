@@ -79,13 +79,22 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
 /* BADGES */
 .badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:6px;font-size:.7rem;font-weight:600;letter-spacing:.02em}
-.badge-imdb{background:rgba(245,158,11,.15);color:#fbbf24}
 .badge-year{background:var(--surface2);color:var(--muted)}
 .badge-lang{background:var(--surface2);color:var(--muted)}
 .badge-pages{background:var(--surface2);color:var(--muted)}
 .fit-badge{padding:2px 7px;border-radius:6px;font-size:.68rem;font-weight:700}
 .fit-kids{background:rgba(99,102,241,.15);color:#a5b4fc}
 .fit-wife{background:rgba(236,72,153,.15);color:#f9a8d4}
+/* IMDb badge: yellow label + score */
+.imdb-wrap{display:inline-flex;align-items:center;gap:4px}
+.badge-imdb-label{background:#f5c518;color:#000;padding:1px 5px;border-radius:4px;font-size:.68rem;font-weight:800;letter-spacing:.02em}
+.badge-imdb-score{font-size:.78rem;font-weight:700;color:var(--text)}
+/* Metacritic: colored circle + /100 */
+.meta-wrap{display:inline-flex;align-items:center;gap:4px}
+.badge-meta{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.64rem;font-weight:800;color:#fff;flex-shrink:0}
+.badge-meta-score{font-size:.72rem;font-weight:600;color:var(--muted)}
+/* Actor pills */
+.actor-pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:.7rem;font-weight:500;background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
 
 /* GENRE PILLS */
 .genre-pill{padding:3px 9px;border-radius:20px;font-size:.72rem;font-weight:600;border:1px solid var(--border);color:var(--muted);cursor:pointer;transition:.15s;background:transparent}
@@ -317,7 +326,7 @@ function renderGrid(content){
     card.innerHTML = `<img src="${c.img}" loading="lazy" alt="${esc(c.label)}"/>
       <div class="cat-card-overlay"></div>
       <div class="cat-card-body">
-        <div class="cat-card-label">${c.emoji} ${esc(c.label)}</div>
+        <div class="cat-card-label">${esc(c.label)}</div>
         <div class="cat-card-count">${count} item${count===1?'':'s'}</div>
       </div>`;
     card.onclick = () => openCat(c.id);
@@ -360,7 +369,7 @@ function renderList(content){
   back.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> All`;
   back.onclick = goHome;
   const title = el('span','section-title');
-  title.textContent = c.emoji+' '+c.label;
+  title.textContent = c.label;
   const addBtn = el('button','add-btn');
   addBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add`;
   addBtn.onclick = () => openForm(null);
@@ -416,14 +425,31 @@ function buildItemCard(item, c){
   titleEl.textContent = item.title||'Untitled';
   body.appendChild(titleEl);
 
-  // Meta row: year, rating, language, pages, author
-  const meta = el('div','item-card-meta');
-  if(item.year) meta.insertAdjacentHTML('beforeend',`<span class="badge badge-year">${esc(item.year)}</span>`);
-  if(item.imdbRating&&item.imdbRating!=='N/A') meta.insertAdjacentHTML('beforeend',`<span class="badge badge-imdb">⭐ ${esc(item.imdbRating)}</span>`);
-  if(c.id==='books'&&item.author) meta.insertAdjacentHTML('beforeend',`<span class="badge badge-lang">${esc(item.author)}</span>`);
-  if(c.id==='books'&&item.pages) meta.insertAdjacentHTML('beforeend',`<span class="badge badge-pages">${esc(item.pages)}p</span>`);
-  if(item.language&&item.language!=='N/A'&&c.id!=='books') meta.insertAdjacentHTML('beforeend',`<span class="badge badge-lang">${esc(item.language)}</span>`);
-  if(meta.children.length) body.appendChild(meta);
+  // Row 1: director pill | actors pill | year for movies/tv; author/pages for books
+  if(c.id==='movies'||c.id==='tv-shows'){
+    const row1 = el('div','item-card-meta');
+    if(item.director&&item.director!=='N/A') row1.insertAdjacentHTML('beforeend',`<span class="actor-pill">${esc(item.director)}</span>`);
+    if(item.actors&&item.actors!=='N/A') row1.insertAdjacentHTML('beforeend',`<span class="actor-pill">${esc(item.actors)}</span>`);
+    if(item.year) row1.insertAdjacentHTML('beforeend',`<span class="badge badge-year">${esc(item.year)}</span>`);
+    if(row1.children.length) body.appendChild(row1);
+    // Row 2: IMDb + Metacritic
+    const row2 = el('div','item-card-meta'); row2.style.marginTop='4px';
+    if(item.imdbRating&&item.imdbRating!=='N/A'){
+      row2.insertAdjacentHTML('beforeend',`<span class="imdb-wrap"><span class="badge-imdb-label">IMDb</span><span class="badge-imdb-score">${esc(item.imdbRating)}</span></span>`);
+    }
+    if(item.metacritic&&item.metacritic!=='N/A'){
+      const mc = parseInt(item.metacritic,10);
+      const mcColor = mc>=61?'#6c3':mc>=40?'#fc3':'#f33';
+      row2.insertAdjacentHTML('beforeend',`<span class="meta-wrap"><span class="badge-meta" style="background:${mcColor}">${esc(item.metacritic)}</span><span class="badge-meta-score">/100</span></span>`);
+    }
+    if(row2.children.length) body.appendChild(row2);
+  } else {
+    const meta = el('div','item-card-meta');
+    if(c.id==='books'&&item.author) meta.insertAdjacentHTML('beforeend',`<span class="badge badge-lang">${esc(item.author)}</span>`);
+    if(c.id==='books'&&item.pages) meta.insertAdjacentHTML('beforeend',`<span class="badge badge-pages">${esc(item.pages)}p</span>`);
+    if(item.year) meta.insertAdjacentHTML('beforeend',`<span class="badge badge-year">${esc(item.year)}</span>`);
+    if(meta.children.length) body.appendChild(meta);
+  }
 
   // Fit badges for movies/tv-shows
   if((c.id==='movies'||c.id==='tv-shows')&&(item.forKids||item.forWife)){
@@ -604,15 +630,34 @@ function appendSection(body, label, value){
 function buildDetailInfo(item, c){
   const info = el('div','detail-info');
   const titleEl = el('div','detail-title'); titleEl.textContent=item.title||'Untitled'; info.appendChild(titleEl);
-  const meta = el('div','detail-meta');
-  if(item.year) meta.insertAdjacentHTML('beforeend',`<span class="badge badge-year">${esc(item.year)}</span>`);
-  if(item.imdbRating&&item.imdbRating!=='N/A') meta.insertAdjacentHTML('beforeend',`<span class="badge badge-imdb">⭐ ${esc(item.imdbRating)}</span>`);
-  if(item.language&&item.language!=='N/A') meta.insertAdjacentHTML('beforeend',`<span class="badge badge-lang">${esc(item.language)}</span>`);
-  if(item.pages) meta.insertAdjacentHTML('beforeend',`<span class="badge badge-pages">${esc(item.pages)}p</span>`);
-  if(item.author) meta.insertAdjacentHTML('beforeend',`<span class="badge badge-lang">${esc(item.author)}</span>`);
-  if(item.forKids) meta.insertAdjacentHTML('beforeend','<span class="fit-badge fit-kids">👦 Kids</span>');
-  if(item.forWife) meta.insertAdjacentHTML('beforeend','<span class="fit-badge fit-wife">💕 Wife</span>');
-  if(meta.innerHTML) info.appendChild(meta);
+  if(c.id==='movies'||c.id==='tv-shows'){
+    // Row 1: director | actors | year
+    const row1 = el('div','detail-meta');
+    if(item.director&&item.director!=='N/A') row1.insertAdjacentHTML('beforeend',`<span class="actor-pill">${esc(item.director)}</span>`);
+    if(item.actors&&item.actors!=='N/A') row1.insertAdjacentHTML('beforeend',`<span class="actor-pill">${esc(item.actors)}</span>`);
+    if(item.year) row1.insertAdjacentHTML('beforeend',`<span class="badge badge-year">${esc(item.year)}</span>`);
+    if(row1.children.length) info.appendChild(row1);
+    // Row 2: IMDb + Metacritic + fit badges
+    const row2 = el('div','detail-meta');
+    if(item.imdbRating&&item.imdbRating!=='N/A'){
+      row2.insertAdjacentHTML('beforeend',`<span class="imdb-wrap"><span class="badge-imdb-label">IMDb</span><span class="badge-imdb-score">${esc(item.imdbRating)}</span></span>`);
+    }
+    if(item.metacritic&&item.metacritic!=='N/A'){
+      const mc=parseInt(item.metacritic,10);
+      const mcColor=mc>=61?'#6c3':mc>=40?'#fc3':'#f33';
+      row2.insertAdjacentHTML('beforeend',`<span class="meta-wrap"><span class="badge-meta" style="background:${mcColor}">${esc(item.metacritic)}</span><span class="badge-meta-score">/100</span></span>`);
+    }
+    if(item.forKids) row2.insertAdjacentHTML('beforeend','<span class="fit-badge fit-kids">👦 Kids</span>');
+    if(item.forWife) row2.insertAdjacentHTML('beforeend','<span class="fit-badge fit-wife">💕 Wife</span>');
+    if(row2.children.length) info.appendChild(row2);
+  } else {
+    const meta = el('div','detail-meta');
+    if(item.year) meta.insertAdjacentHTML('beforeend',`<span class="badge badge-year">${esc(item.year)}</span>`);
+    if(item.language&&item.language!=='N/A') meta.insertAdjacentHTML('beforeend',`<span class="badge badge-lang">${esc(item.language)}</span>`);
+    if(item.pages) meta.insertAdjacentHTML('beforeend',`<span class="badge badge-pages">${esc(item.pages)}p</span>`);
+    if(item.author) meta.insertAdjacentHTML('beforeend',`<span class="badge badge-lang">${esc(item.author)}</span>`);
+    if(meta.innerHTML) info.appendChild(meta);
+  }
   return info;
 }
 
@@ -684,12 +729,13 @@ function buildForm(body, c, item){
 
   // Movies/TV fields
   if(c.id==='movies'||c.id==='tv-shows'){
+    appendFormRow(body,'Director','f-director','input',item&&item.director||'');
+    appendFormRow(body,'Actors','f-actors','input',item&&item.actors||'');
     const r1 = el('div','form-row-inline');
     const lr = el('div','form-row'); lr.innerHTML=`<label>Language</label><input class="form-input" id="f-language" value="${esc(item&&item.language||'')}"/>`;
     const rr = el('div','form-row'); rr.innerHTML=`<label>IMDb Rating</label><input class="form-input" id="f-rating" value="${esc(item&&item.imdbRating||'')}"/>`;
-    r1.appendChild(lr); r1.appendChild(rr); body.appendChild(r1);
-
-    appendFormRow(body,'Actors','f-actors','input',item&&item.actors||'');
+    const mr = el('div','form-row'); mr.innerHTML=`<label>Metacritic</label><input class="form-input" id="f-metacritic" value="${esc(item&&item.metacritic||'')}"/>`;
+    r1.appendChild(lr); r1.appendChild(rr); r1.appendChild(mr); body.appendChild(r1);
     appendFormRow(body,'Synopsis','f-synopsis','textarea',item&&item.synopsis||'');
 
     // Kids/Wife checkboxes
@@ -846,8 +892,10 @@ function saveItem(){
   if(c.subs.length) obj.sub = v('f-sub')||c.subs[0].id;
 
   if(c.id==='movies'||c.id==='tv-shows'){
+    obj.director = v('f-director');
     obj.language = v('f-language');
     obj.imdbRating = v('f-rating');
+    obj.metacritic = v('f-metacritic');
     obj.actors = v('f-actors');
     obj.synopsis = v('f-synopsis');
     obj.trailer = v('f-trailer')||(existing?existing.trailer:null);
@@ -922,7 +970,9 @@ async function applyOmdbData(data){
   setField('f-year',data.Year);
   setField('f-language',data.Language);
   setField('f-rating',data.imdbRating);
-  setField('f-actors',data.Actors);
+  setField('f-metacritic',data.Metascore&&data.Metascore!=='N/A'?data.Metascore:'');
+  setField('f-director',data.Director&&data.Director!=='N/A'?data.Director:'');
+  setField('f-actors',data.Actors&&data.Actors!=='N/A'?data.Actors:'');
   setField('f-synopsis',data.Plot&&data.Plot!=='N/A'?data.Plot:'');
   if(data.Poster&&data.Poster!=='N/A') setFormPoster(data.Poster);
   setSmartStatus('Applied! Fetching trailer…');

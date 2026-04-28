@@ -81,6 +81,9 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .jdi-btn{margin-left:auto;padding:5px 12px;border-radius:8px;font-size:.78rem;font-weight:600;background:rgba(16,185,129,.15);color:#6ee7b7;border:1px solid rgba(16,185,129,.25);transition:.15s}
 .jdi-btn:hover{background:rgba(16,185,129,.25)}
 .jdi-done-tag{margin-left:auto;font-size:.75rem;color:var(--muted);display:flex;align-items:center;gap:4px}
+.jdi-sheet-head{display:flex;align-items:center;gap:10px;padding:8px 0 18px}
+.jdi-sheet-icon{font-size:1.8rem;line-height:1}
+.jdi-sheet-label{font-size:1.1rem;font-weight:700;color:var(--text)}
 .kindle-link{font-size:.72rem;color:#f59e0b;font-weight:600;text-decoration:none;display:flex;align-items:center;gap:3px;padding:3px 7px;border-radius:6px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2)}
 .kindle-link:hover{background:rgba(245,158,11,.2)}
 
@@ -614,13 +617,52 @@ function emptyState(msg){
   return d;
 }
 
-// ─── Mark done ────────────────────────────────────────────────────────────────
+// ─── Just Did It sheet ────────────────────────────────────────────────────────
 function markDone(id){
   const item = items.find(i=>i.id===id);
   if(!item) return;
-  item.status = 'done';
-  item.doneDate = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-  save(); renderContent();
+  const c = getCat(item.cat);
+
+  document.getElementById('sheetEmoji').textContent = c.emoji;
+  document.getElementById('sheetTitle').textContent = item.title||'Untitled';
+  document.getElementById('delBtn').style.display = 'none';
+
+  const body = document.getElementById('sheetBody');
+  body.innerHTML = '';
+
+  // Congrats heading
+  const hd = el('div','jdi-sheet-head');
+  hd.innerHTML = `<span class="jdi-sheet-icon">🎉</span><span class="jdi-sheet-label">Nice! How was it?</span>`;
+  body.appendChild(hd);
+
+  // Star rating picker
+  body.appendChild(buildStarPicker('jdi-rating','Your Rating', item.rating||0));
+
+  // Review textarea
+  const revRow = el('div','form-row');
+  revRow.innerHTML = `<label>Why did you like it? (optional)</label><textarea class="form-textarea" id="jdi-review" placeholder="A few words about what made it great…" rows="4">${esc(item.review||'')}</textarea>`;
+  body.appendChild(revRow);
+
+  const actions = document.getElementById('sheetActions');
+  actions.innerHTML = '';
+
+  const cancelBtn = el('button','sheet-cancel');
+  cancelBtn.textContent = 'Cancel'; cancelBtn.onclick = closeSheet;
+
+  const saveBtn = el('button','sheet-save');
+  saveBtn.innerHTML = '✓ Mark as Past';
+  saveBtn.onclick = () => {
+    item.status = 'done';
+    item.doneDate = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const ratingEl = document.getElementById('jdi-rating');
+    if(ratingEl) item.rating = parseInt(ratingEl.value)||0;
+    const reviewEl = document.getElementById('jdi-review');
+    if(reviewEl) item.review = reviewEl.value.trim();
+    save(); closeSheet(); renderContent();
+  };
+
+  actions.appendChild(cancelBtn); actions.appendChild(saveBtn);
+  openSheet();
 }
 
 // ─── Delete ───────────────────────────────────────────────────────────────────
@@ -666,6 +708,9 @@ function openDetail(id){
 
   // Actors
   if(item.actors) appendSection(body,'Actors',item.actors);
+
+  // Review (from Just Did It)
+  if(item.review) appendSection(body,'My review',item.review);
 
   // Notes
   const notes = item.notes||item.reasons||'';
@@ -834,7 +879,7 @@ function buildForm(body, c, item){
     appendFormRow(body,'Actors','f-actors','input',item&&item.actors||'');
     const r1 = el('div','form-row-inline');
     const lr = el('div','form-row'); lr.innerHTML=`<label>Language</label><input class="form-input" id="f-language" value="${esc(item&&item.language||'')}"/>`;
-    const rr = el('div','form-row'); rr.innerHTML=`<label>IMDb Rating</label><input class="form-input" id="f-rating" value="${esc(item&&item.imdbRating||'')}"/>`;
+    const rr = el('div','form-row'); rr.innerHTML=`<label>IMDb Rating</label><input class="form-input" id="f-imdb" value="${esc(item&&item.imdbRating||'')}"/>`;
     const mr = el('div','form-row'); mr.innerHTML=`<label>Metacritic</label><input class="form-input" id="f-metacritic" value="${esc(item&&item.metacritic||'')}"/>`;
     r1.appendChild(lr); r1.appendChild(rr); r1.appendChild(mr); body.appendChild(r1);
     appendFormRow(body,'Synopsis','f-synopsis','textarea',item&&item.synopsis||'');
@@ -888,7 +933,8 @@ function buildForm(body, c, item){
   // Match / Rating stars
   const isExistingDone = item && item.status === 'done';
   if(isExistingDone){
-    body.appendChild(buildStarPicker('f-rating','Rating — how was it?', item&&item.rating||0));
+    body.appendChild(buildStarPicker('f-star-rating','Rating — how was it?', item&&item.rating||0));
+    appendFormRow(body,'My review (optional)','f-review','textarea',item&&item.review||'');
   } else {
     body.appendChild(buildStarPicker('f-match','Match — how interested are you?', item&&item.match||0));
   }
@@ -1002,17 +1048,21 @@ function saveItem(){
 
   // Star ratings
   const fMatch = document.getElementById('f-match');
-  const fRating = document.getElementById('f-rating');
+  const fStarRating = document.getElementById('f-star-rating');
   if(fMatch) obj.match = parseInt(fMatch.value)||0;
-  if(fRating) obj.rating = parseInt(fRating.value)||0;
+  if(fStarRating) obj.rating = parseInt(fStarRating.value)||0;
   // preserve the other rating when editing
   if(!fMatch && existing) obj.match = existing.match||0;
-  if(!fRating && existing) obj.rating = existing.rating||0;
+  if(!fStarRating && existing) obj.rating = existing.rating||0;
+  // review (from Just Did It or edit form)
+  const fReview = document.getElementById('f-review');
+  if(fReview) obj.review = fReview.value.trim();
+  else if(existing) obj.review = existing.review||'';
 
   if(c.id==='movies'||c.id==='tv-shows'){
     obj.director = v('f-director');
     obj.language = v('f-language');
-    obj.imdbRating = v('f-rating');
+    obj.imdbRating = v('f-imdb');
     obj.metacritic = v('f-metacritic');
     obj.actors = v('f-actors');
     obj.synopsis = v('f-synopsis');
@@ -1087,7 +1137,7 @@ async function applyOmdbData(data){
   setField('f-title',data.Title);
   setField('f-year',data.Year);
   setField('f-language',data.Language);
-  setField('f-rating',data.imdbRating);
+  setField('f-imdb',data.imdbRating);
   setField('f-metacritic',data.Metascore&&data.Metascore!=='N/A'?data.Metascore:'');
   setField('f-director',data.Director&&data.Director!=='N/A'?data.Director:'');
   setField('f-actors',data.Actors&&data.Actors!=='N/A'?data.Actors:'');

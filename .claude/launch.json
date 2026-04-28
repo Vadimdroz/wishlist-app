@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "wishlist",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-p", "3333", "/Users/vadim.drozdovski/wishlist-app"],
+      "port": 3333
+    }
+  ]
+}

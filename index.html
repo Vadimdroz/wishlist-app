@@ -81,9 +81,11 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .jdi-btn{margin-left:auto;padding:5px 12px;border-radius:8px;font-size:.78rem;font-weight:600;background:rgba(16,185,129,.15);color:#6ee7b7;border:1px solid rgba(16,185,129,.25);transition:.15s}
 .jdi-btn:hover{background:rgba(16,185,129,.25)}
 .jdi-done-tag{margin-left:auto;font-size:.75rem;color:var(--muted);display:flex;align-items:center;gap:4px}
-.jdi-sheet-head{display:flex;align-items:center;gap:10px;padding:8px 0 18px}
-.jdi-sheet-icon{font-size:1.8rem;line-height:1}
+.jdi-sheet-head{padding:4px 0 16px}
 .jdi-sheet-label{font-size:1.1rem;font-weight:700;color:var(--text)}
+.jdi-aspects-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.jdi-aspect{padding:6px 13px;border-radius:20px;font-size:.78rem;font-weight:600;background:var(--surface2);color:var(--muted);border:1px solid var(--border);cursor:pointer;transition:.15s;user-select:none}
+.jdi-aspect.on{background:rgba(99,102,241,.18);color:#a5b4fc;border-color:rgba(99,102,241,.4)}
 .kindle-link{font-size:.72rem;color:#f59e0b;font-weight:600;text-decoration:none;display:flex;align-items:center;gap:3px;padding:3px 7px;border-radius:6px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2)}
 .kindle-link:hover{background:rgba(245,158,11,.2)}
 
@@ -630,17 +632,34 @@ function markDone(id){
   const body = document.getElementById('sheetBody');
   body.innerHTML = '';
 
-  // Congrats heading
+  const JDI_ASPECTS = ['Storyline & writing','Direction','Acting','Thrill & excitement','Authenticity & emotion','Style & cinematography'];
+
+  // Heading
   const hd = el('div','jdi-sheet-head');
-  hd.innerHTML = `<span class="jdi-sheet-icon">🎉</span><span class="jdi-sheet-label">Nice! How was it?</span>`;
+  hd.innerHTML = `<span class="jdi-sheet-label">How was it?</span>`;
   body.appendChild(hd);
 
   // Star rating picker
   body.appendChild(buildStarPicker('jdi-rating','Your Rating', item.rating||0));
 
-  // Review textarea
+  // What I liked — aspect pills
+  const aspectRow = el('div','form-row');
+  const aspectLbl = document.createElement('label'); aspectLbl.textContent = 'What stood out?';
+  aspectRow.appendChild(aspectLbl);
+  const aspectWrap = el('div','jdi-aspects-wrap');
+  const currentAspects = item.likedAspects || [];
+  JDI_ASPECTS.forEach(a => {
+    const pill = el('button','jdi-aspect'+(currentAspects.includes(a)?' on':''));
+    pill.type='button'; pill.textContent=a;
+    pill.onclick = () => pill.classList.toggle('on');
+    aspectWrap.appendChild(pill);
+  });
+  aspectRow.appendChild(aspectWrap);
+  body.appendChild(aspectRow);
+
+  // Free-text review
   const revRow = el('div','form-row');
-  revRow.innerHTML = `<label>Why did you like it? (optional)</label><textarea class="form-textarea" id="jdi-review" placeholder="A few words about what made it great…" rows="4">${esc(item.review||'')}</textarea>`;
+  revRow.innerHTML = `<label>Anything else? (optional)</label><textarea class="form-textarea" id="jdi-review" placeholder="A few words about what made it great…" rows="3">${esc(item.review||'')}</textarea>`;
   body.appendChild(revRow);
 
   const actions = document.getElementById('sheetActions');
@@ -658,6 +677,7 @@ function markDone(id){
     if(ratingEl) item.rating = parseInt(ratingEl.value)||0;
     const reviewEl = document.getElementById('jdi-review');
     if(reviewEl) item.review = reviewEl.value.trim();
+    item.likedAspects = [...aspectWrap.querySelectorAll('.jdi-aspect.on')].map(p=>p.textContent);
     save(); closeSheet(); renderContent();
   };
 
@@ -710,6 +730,15 @@ function openDetail(id){
   if(item.actors) appendSection(body,'Actors',item.actors);
 
   // Review (from Just Did It)
+  if(item.likedAspects&&item.likedAspects.length){
+    const s = el('div','detail-section');
+    const sl = el('div','detail-section-label'); sl.textContent='What I liked'; s.appendChild(sl);
+    const aw = el('div','jdi-aspects-wrap'); aw.style.marginTop='6px';
+    item.likedAspects.forEach(a => {
+      const pill = el('span','jdi-aspect on'); pill.textContent=a; aw.appendChild(pill);
+    });
+    s.appendChild(aw); body.appendChild(s);
+  }
   if(item.review) appendSection(body,'My review',item.review);
 
   // Notes
@@ -934,6 +963,18 @@ function buildForm(body, c, item){
   const isExistingDone = item && item.status === 'done';
   if(isExistingDone){
     body.appendChild(buildStarPicker('f-star-rating','Rating — how was it?', item&&item.rating||0));
+    const _aspects = ['Storyline & writing','Direction','Acting','Thrill & excitement','Authenticity & emotion','Style & cinematography'];
+    const _cur = (item&&item.likedAspects)||[];
+    const _ar = el('div','form-row');
+    const _al = document.createElement('label'); _al.textContent='What stood out?'; _ar.appendChild(_al);
+    const _aw = el('div','jdi-aspects-wrap'); _aw.id='f-aspects-wrap';
+    _aspects.forEach(a => {
+      const pill = el('button','jdi-aspect'+(_cur.includes(a)?' on':''));
+      pill.type='button'; pill.textContent=a;
+      pill.onclick = () => pill.classList.toggle('on');
+      _aw.appendChild(pill);
+    });
+    _ar.appendChild(_aw); body.appendChild(_ar);
     appendFormRow(body,'My review (optional)','f-review','textarea',item&&item.review||'');
   } else {
     body.appendChild(buildStarPicker('f-match','Match — how interested are you?', item&&item.match||0));
@@ -1054,10 +1095,13 @@ function saveItem(){
   // preserve the other rating when editing
   if(!fMatch && existing) obj.match = existing.match||0;
   if(!fStarRating && existing) obj.rating = existing.rating||0;
-  // review (from Just Did It or edit form)
+  // review + liked aspects (from Just Did It or edit form)
   const fReview = document.getElementById('f-review');
   if(fReview) obj.review = fReview.value.trim();
   else if(existing) obj.review = existing.review||'';
+  const fAspectsWrap = document.getElementById('f-aspects-wrap');
+  if(fAspectsWrap) obj.likedAspects = [...fAspectsWrap.querySelectorAll('.jdi-aspect.on')].map(p=>p.textContent);
+  else if(existing) obj.likedAspects = existing.likedAspects||[];
 
   if(c.id==='movies'||c.id==='tv-shows'){
     obj.director = v('f-director');

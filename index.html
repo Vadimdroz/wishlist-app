@@ -95,6 +95,16 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .badge-meta-score{font-size:.72rem;font-weight:600;color:var(--muted)}
 /* Actor pills */
 .actor-pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:.7rem;font-weight:500;background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+/* Star ratings */
+.stars-wrap{display:inline-flex;align-items:center;gap:3px}
+.stars-label{font-size:.68rem;font-weight:700;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.s-star{font-size:.85rem;line-height:1;color:#f5c518}
+.s-star.off{color:var(--surface2)}
+/* Star picker in form */
+.star-picker-wrap{display:flex;gap:6px;margin-top:4px}
+.sp-star{font-size:1.6rem;cursor:pointer;color:var(--muted);transition:.1s;line-height:1;user-select:none}
+.sp-star.on{color:#f5c518}
+.sp-star:hover{transform:scale(1.15)}
 
 /* GENRE PILLS */
 .genre-pill{padding:3px 9px;border-radius:20px;font-size:.72rem;font-weight:600;border:1px solid var(--border);color:var(--muted);cursor:pointer;transition:.15s;background:transparent}
@@ -188,7 +198,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <nav class="nav">
   <div class="nav-logo">✨ Wishlist</div>
   <button class="tab-btn active" id="tabFuture" onclick="setTab('future')">Future</button>
-  <button class="tab-btn" id="tabDone" onclick="setTab('done')">Done</button>
+  <button class="tab-btn" id="tabDone" onclick="setTab('done')">Past</button>
 </nav>
 
 <div class="content" id="content"></div>
@@ -278,6 +288,40 @@ let tab = 'future', catId = null, editId = null, formSub = null, searchQuery = '
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function save(){ localStorage.setItem('wl_v3', JSON.stringify(items)); }
+
+function buildStarDisplay(value, label){
+  const v = parseInt(value)||0;
+  if(!v) return null;
+  const wrap = el('span','stars-wrap');
+  const lbl = el('span','stars-label'); lbl.textContent = label;
+  wrap.appendChild(lbl);
+  for(let i=1;i<=5;i++){
+    const s = el('span','s-star'+(i>v?' off':''));
+    s.textContent='★';
+    wrap.appendChild(s);
+  }
+  return wrap;
+}
+
+function buildStarPicker(fieldId, label, currentVal){
+  const row = el('div','form-row');
+  const lbl = document.createElement('label'); lbl.textContent=label; row.appendChild(lbl);
+  const picker = el('div','star-picker-wrap'); picker.id=fieldId+'-picker';
+  const hidden = document.createElement('input');
+  hidden.type='hidden'; hidden.id=fieldId; hidden.value=currentVal||0;
+  for(let i=1;i<=5;i++){
+    const s = el('span','sp-star'+(i<=(currentVal||0)?' on':''));
+    s.textContent='★'; s.dataset.val=i;
+    s.onclick=()=>{
+      const val=parseInt(s.dataset.val);
+      hidden.value=val;
+      picker.querySelectorAll('.sp-star').forEach(st=>st.classList.toggle('on',parseInt(st.dataset.val)<=val));
+    };
+    picker.appendChild(s);
+  }
+  row.appendChild(picker); row.appendChild(hidden);
+  return row;
+}
 
 function esc(s){
   return String(s||'')
@@ -463,12 +507,16 @@ function buildItemCard(item, c){
   titleEl.textContent = item.title||'Untitled';
   body.appendChild(titleEl);
 
-  // Row 1: director pill | actors pill | year for movies/tv; author/pages for books
+  // Row 1: director pill | actors pill | year | Match/Rating stars
   if(c.id==='movies'||c.id==='tv-shows'){
     const row1 = el('div','item-card-meta');
     if(item.director&&item.director!=='N/A') row1.insertAdjacentHTML('beforeend',`<span class="actor-pill">${esc(item.director)}</span>`);
     if(item.actors&&item.actors!=='N/A') row1.insertAdjacentHTML('beforeend',`<span class="actor-pill">${esc(item.actors)}</span>`);
     if(item.year) row1.insertAdjacentHTML('beforeend',`<span class="badge badge-year">${esc(item.year)}</span>`);
+    const starVal = item.status==='future' ? item.match : item.rating;
+    const starLabel = item.status==='future' ? 'Match' : 'Rating';
+    const starEl = buildStarDisplay(starVal, starLabel);
+    if(starEl) row1.appendChild(starEl);
     if(row1.children.length) body.appendChild(row1);
     // Row 2: IMDb + Metacritic
     const row2 = el('div','item-card-meta'); row2.style.marginTop='4px';
@@ -486,6 +534,10 @@ function buildItemCard(item, c){
     if(c.id==='books'&&item.author) meta.insertAdjacentHTML('beforeend',`<span class="badge badge-lang">${esc(item.author)}</span>`);
     if(c.id==='books'&&item.pages) meta.insertAdjacentHTML('beforeend',`<span class="badge badge-pages">${esc(item.pages)}p</span>`);
     if(item.year) meta.insertAdjacentHTML('beforeend',`<span class="badge badge-year">${esc(item.year)}</span>`);
+    const starVal = item.status==='future' ? item.match : item.rating;
+    const starLabel = item.status==='future' ? 'Match' : 'Rating';
+    const starEl = buildStarDisplay(starVal, starLabel);
+    if(starEl) meta.appendChild(starEl);
     if(meta.children.length) body.appendChild(meta);
   }
 
@@ -687,6 +739,10 @@ function buildDetailInfo(item, c){
     }
     if(item.forKids) row2.insertAdjacentHTML('beforeend','<span class="fit-badge fit-kids">👦 Kids</span>');
     if(item.forWife) row2.insertAdjacentHTML('beforeend','<span class="fit-badge fit-wife">💕 Wife</span>');
+    const dStarVal = item.status==='future' ? item.match : item.rating;
+    const dStarLabel = item.status==='future' ? 'Match' : 'Rating';
+    const dStarEl = buildStarDisplay(dStarVal, dStarLabel);
+    if(dStarEl) row2.appendChild(dStarEl);
     if(row2.children.length) info.appendChild(row2);
   } else {
     const meta = el('div','detail-meta');
@@ -822,6 +878,14 @@ function buildForm(body, c, item){
     appendFormRow(body,'Notes','f-notes','textarea',item&&(item.notes||item.description||item.reasons)||'');
   }
 
+  // Match / Rating stars
+  const isExistingDone = item && item.status === 'done';
+  if(isExistingDone){
+    body.appendChild(buildStarPicker('f-rating','Rating — how was it?', item&&item.rating||0));
+  } else {
+    body.appendChild(buildStarPicker('f-match','Match — how interested are you?', item&&item.match||0));
+  }
+
   // Source of recommendation
   const sourceVal = (item&&item.source&&item.source!=='N/A') ? item.source : '';
   appendFormRow(body,'Source of Recommendation (optional)','f-source','input',sourceVal);
@@ -928,6 +992,15 @@ function saveItem(){
   };
 
   if(c.subs.length) obj.sub = v('f-sub')||c.subs[0].id;
+
+  // Star ratings
+  const fMatch = document.getElementById('f-match');
+  const fRating = document.getElementById('f-rating');
+  if(fMatch) obj.match = parseInt(fMatch.value)||0;
+  if(fRating) obj.rating = parseInt(fRating.value)||0;
+  // preserve the other rating when editing
+  if(!fMatch && existing) obj.match = existing.match||0;
+  if(!fRating && existing) obj.rating = existing.rating||0;
 
   if(c.id==='movies'||c.id==='tv-shows'){
     obj.director = v('f-director');

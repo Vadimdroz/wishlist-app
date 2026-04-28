@@ -658,16 +658,7 @@ function buildForm(body, c, item){
     sb.onclick = smartUpdate;
     body.appendChild(sb);
     const ss = el('div','smart-status'); ss.id='smartStatus'; body.appendChild(ss);
-    // OMDB key if missing (movies only)
-    if(c.id==='movies' && !localStorage.getItem('omdb_key')){
-      const kw = el('div','omdb-key-wrap'); kw.id='omdbKeyWrap';
-      kw.innerHTML=`<p>Enter your OMDB API key to enable Smart Update</p>
-        <div class="omdb-key-row">
-          <input id="omdbKeyInput" class="form-input" style="flex:1" placeholder="API key…"/>
-          <button class="poster-url-btn" type="button" onclick="saveOmdbKey()">Save</button>
-        </div>`;
-      body.appendChild(kw);
-    }
+    // no key prompt needed — default key is built in
     const pc = el('div'); pc.id='pickerContainer'; body.appendChild(pc);
   }
 
@@ -778,11 +769,11 @@ function buildPosterSection(posterUrl){
         <button class="poster-url-btn" type="button" onclick="setPosterFromUrl()">Set</button>
       </div>
     </div>`;
-    document.getElementById('posterDropZone').onclick = function(e){
+    inner.querySelector('#posterDropZone').onclick = function(e){
       if(e.target.tagName==='INPUT'||e.target.tagName==='BUTTON') return;
-      document.getElementById('posterFileInput').click();
+      inner.querySelector('#posterFileInput').click();
     };
-    document.getElementById('posterFileInput').onchange = function(){
+    inner.querySelector('#posterFileInput').onchange = function(){
       const file=this.files[0]; if(!file) return;
       const reader=new FileReader();
       reader.onload=ev=>setFormPoster(ev.target.result);
@@ -812,7 +803,8 @@ function buildPosterSection(posterUrl){
 }
 
 window.setPosterFromUrl = function(){
-  const url=(document.getElementById('posterUrlInput')||{}).value||'';
+  const el=document.getElementById('posterUrlInput')||document.querySelector('.poster-url-input');
+  const url=(el||{}).value||'';
   if(url) setFormPoster(url);
 };
 

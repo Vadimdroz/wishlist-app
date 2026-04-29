@@ -1043,8 +1043,10 @@ function buildForm(body, c, item){
   }
 
   // Match / Rating stars
+  // Show rating/aspects when editing a done item OR adding new while on Past tab
   const isExistingDone = item && item.status === 'done';
-  if(isExistingDone){
+  const isDoneContext = isExistingDone || (!item && tab === 'done');
+  if(isDoneContext){
     body.appendChild(buildStarPicker('f-star-rating','Rating — how was it?', item&&item.rating||0));
     const _aspects = ['Storyline & writing','Direction','Acting','Thrill & excitement','Authenticity & emotion','Style & cinematography'];
     const _cur = (item&&item.likedAspects)||[];
@@ -1062,6 +1064,7 @@ function buildForm(body, c, item){
   } else {
     body.appendChild(buildStarPicker('f-match','Match — how interested are you?', item&&item.match||0));
   }
+
 
   // Source of recommendation
   const sourceVal = (item&&item.source&&item.source!=='N/A') ? item.source : '';
@@ -1160,8 +1163,8 @@ function saveItem(){
   const obj = {
     id: editId||uid(),
     cat: catId,
-    status: existing ? existing.status : 'future',
-    doneDate: existing ? existing.doneDate : null,
+    status: existing ? existing.status : (tab==='done' ? 'done' : 'future'),
+    doneDate: existing ? existing.doneDate : (tab==='done' ? new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : null),
     title: titleVal,
     year: v('f-year'),
     source: v('f-source')||'N/A',

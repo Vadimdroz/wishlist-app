@@ -24,15 +24,32 @@ a{color:inherit;text-decoration:none}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
 /* NAV */
-.nav{display:flex;align-items:center;gap:16px;padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:50}
-.nav-logo{font-weight:700;font-size:1.1rem;letter-spacing:-.02em;flex:1}
-.tab-btn{padding:6px 14px;border-radius:20px;font-size:.85rem;font-weight:500;transition:.15s}
-.tab-btn.active{background:var(--surface2);color:var(--text)}
-.tab-btn:not(.active){color:var(--muted)}
-.tab-btn:hover:not(.active){color:var(--text)}
+.nav{display:flex;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:50}
+.nav-logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:1.1rem;letter-spacing:-.02em;cursor:pointer;user-select:none}
+.nav-logo img{width:28px;height:28px;object-fit:contain;border-radius:6px}
+
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:50;background:rgba(13,13,20,.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--border);display:flex;justify-content:space-around;align-items:stretch;padding:0 0 env(safe-area-inset-bottom)}
+.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 0 12px;font-size:.68rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);transition:.15s;border:none;background:none;position:relative}
+.tab-btn.active{color:var(--text)}
+.tab-btn.active::after{content:'';position:absolute;top:0;left:25%;right:25%;height:2px;background:#6366f1;border-radius:0 0 2px 2px}
+.tab-btn svg{width:20px;height:20px;stroke-width:1.8}
+.tab-btn:hover:not(.active){color:rgba(240,240,245,.6)}
+.tab-btn-discovery.active{color:#a5b4fc}
+.tab-btn-discovery.active::after{background:linear-gradient(90deg,#6366f1,#a78bfa)}
+
+/* DISCOVERY SCREEN */
+.discovery-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px;text-align:center;gap:20px;min-height:60vh}
+.discovery-dandelion{font-size:4rem;line-height:1;filter:drop-shadow(0 0 20px rgba(99,102,241,.4));animation:float 4s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.discovery-title{font-size:1.5rem;font-weight:700;color:var(--text)}
+.discovery-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.discovery-desc{font-size:.95rem;color:var(--muted);line-height:1.7;max-width:360px}
+.discovery-pills{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:4px}
+.discovery-pill{padding:5px 12px;border-radius:20px;font-size:.75rem;font-weight:600;background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
 
 /* CONTENT */
-.content{max-width:720px;margin:0 auto;padding:20px 16px 100px}
+.content{max-width:720px;margin:0 auto;padding:20px 16px 120px}
 
 /* SEARCH */
 .search-wrap{position:relative;margin-bottom:20px}
@@ -209,12 +226,28 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <body>
 
 <nav class="nav">
-  <div class="nav-logo">✨ Wishlist</div>
-  <button class="tab-btn active" id="tabFuture" onclick="setTab('future')">Future</button>
-  <button class="tab-btn" id="tabDone" onclick="setTab('done')">Past</button>
+  <div class="nav-logo" onclick="goHome()">
+    <img src="icon.png" alt=""/>
+    Wishlist
+  </div>
 </nav>
 
 <div class="content" id="content"></div>
+
+<nav class="bottom-nav">
+  <button class="tab-btn active" id="tabFuture" onclick="setTab('future')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3l14 9-14 9V3z"/></svg>
+    Future
+  </button>
+  <button class="tab-btn tab-btn-discovery" id="tabDiscovery" onclick="setTab('discovery')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 2v2m0 16v2M2 12h2m16 0h2m-3.22-6.78-1.42 1.42M6.64 17.36l-1.42 1.42m0-12.02 1.42 1.42m10.72 10.72 1.42 1.42"/></svg>
+    Discovery
+  </button>
+  <button class="tab-btn" id="tabDone" onclick="setTab('done')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    Past
+  </button>
+</nav>
 
 <!-- Sheet overlay -->
 <div class="sheet-overlay" id="sheetOverlay" onclick="overlayClick(event)">
@@ -380,16 +413,40 @@ function setTab(t){
   tab = t; catId = null; editId = null; formSub = null; searchQuery = '';
   document.getElementById('tabFuture').classList.toggle('active', t==='future');
   document.getElementById('tabDone').classList.toggle('active', t==='done');
+  document.getElementById('tabDiscovery').classList.toggle('active', t==='discovery');
   renderContent();
 }
 
 function openCat(id){ catId = id; editId = null; formSub = null; searchQuery = ''; renderContent(); }
-function goHome(){ catId = null; editId = null; searchQuery = ''; renderContent(); }
+function goHome(){
+  catId = null; editId = null; searchQuery = '';
+  if(tab==='discovery'){ setTab('future'); return; }
+  renderContent();
+}
 
 // ─── Root render ──────────────────────────────────────────────────────────────
 function renderContent(){
   const content = document.getElementById('content');
   content.innerHTML = '';
+
+  // Discovery tab — full-screen coming soon
+  if(tab === 'discovery'){
+    const scr = el('div','discovery-screen');
+    scr.innerHTML = `
+      <div class="discovery-dandelion">🌬️</div>
+      <span class="discovery-badge">✦ Coming Soon</span>
+      <div class="discovery-title">Discover What's Next</div>
+      <p class="discovery-desc">Discovery will learn from your wishlist — your ratings, the genres and directors you love, what you've already seen and read — and surface personalised recommendations across every category.</p>
+      <div class="discovery-pills">
+        <span class="discovery-pill">🎬 Movies for you</span>
+        <span class="discovery-pill">📺 Shows to binge</span>
+        <span class="discovery-pill">📚 Your next read</span>
+        <span class="discovery-pill">✈️ Places to go</span>
+        <span class="discovery-pill">🍽️ Restaurants nearby</span>
+      </div>`;
+    content.appendChild(scr);
+    return;
+  }
 
   // Search bar always at top
   const sw = el('div','search-wrap');

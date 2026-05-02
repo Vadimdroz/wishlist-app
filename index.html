@@ -26,7 +26,9 @@ a{color:inherit;text-decoration:none}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
 /* NAV */
-.nav{display:flex;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:50}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:50}
+.export-btn{display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--muted);font-size:.75rem;font-weight:600;cursor:pointer;transition:.15s}
+.export-btn:hover{color:var(--text);border-color:rgba(255,255,255,.2)}
 .nav-logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:1.1rem;letter-spacing:-.02em;cursor:pointer;user-select:none}
 .nav-logo svg{width:34px;height:34px;flex-shrink:0}
 
@@ -91,6 +93,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .item-card:hover{border-color:rgba(255,255,255,.14)}
 .item-card-inner{display:flex;gap:0;min-height:0}
 .item-card-poster{width:90px;min-width:90px;object-fit:cover;display:block;align-self:stretch}
+.item-card-poster-placeholder{width:90px;min-width:90px;align-self:stretch;display:flex;align-items:center;justify-content:center;background:var(--surface2);font-size:1.6rem;opacity:.45}
 .item-card-body{padding:12px 14px;flex:1;display:flex;flex-direction:column;gap:4px;min-width:0}
 .item-card-title{font-weight:700;font-size:.95rem;line-height:1.3}
 .item-card-meta{font-size:.78rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
@@ -248,6 +251,10 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
     </svg>
     Wishlist
   </div>
+  <button class="export-btn" onclick="exportCSV()" title="Export all items to CSV">
+    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
+    Export
+  </button>
 </nav>
 
 <div class="content" id="content"></div>
@@ -571,6 +578,12 @@ function renderList(content){
   content.appendChild(ul);
 }
 
+function makePosterPlaceholder(c){
+  const ph = el('div','item-card-poster-placeholder');
+  ph.textContent = c.emoji || '🎬';
+  return ph;
+}
+
 // ─── Item card builder ────────────────────────────────────────────────────────
 function buildItemCard(item, c){
   const card = el('div','item-card');
@@ -578,14 +591,19 @@ function buildItemCard(item, c){
 
   const inner = el('div','item-card-inner');
 
-  // Poster for movies, tv-shows, books
-  if((c.id==='movies'||c.id==='tv-shows'||c.id==='books') && item.poster && item.poster!=='N/A'){
-    const img = document.createElement('img');
-    img.className = 'item-card-poster';
-    img.src = item.poster;
-    img.loading = 'lazy';
-    img.alt = '';
-    inner.appendChild(img);
+  // Poster for movies, tv-shows, books, restaurants
+  if(c.id==='movies'||c.id==='tv-shows'||c.id==='books'||c.id==='restaurants'){
+    if(item.poster && item.poster!=='N/A'){
+      const img = document.createElement('img');
+      img.className = 'item-card-poster';
+      img.src = item.poster;
+      img.loading = 'lazy';
+      img.alt = '';
+      img.onerror = () => { img.replaceWith(makePosterPlaceholder(c)); };
+      inner.appendChild(img);
+    } else {
+      inner.appendChild(makePosterPlaceholder(c));
+    }
   }
 
   const body = el('div','item-card-body');
@@ -687,8 +705,43 @@ function buildItemCard(item, c){
       }
       body.appendChild(srcRow);
     }
+  } else if(c.id==='restaurants'){
+    // Cuisine + location row
+    const hasCuisine = item.cuisine && item.cuisine!=='';
+    const hasLocation = (item.city||'') || (item.country||'');
+    if(hasCuisine || hasLocation){
+      const metaRow = el('div','item-card-meta'); metaRow.style.marginTop='4px';
+      if(hasCuisine) metaRow.insertAdjacentHTML('beforeend',`<span class="genre-pill on" style="pointer-events:none">${esc(item.cuisine)}</span>`);
+      if(hasLocation){
+        const loc = [item.city, item.country].filter(Boolean).join(', ');
+        metaRow.insertAdjacentHTML('beforeend',`<span class="badge badge-year">📍 ${esc(loc)}</span>`);
+      }
+      body.appendChild(metaRow);
+    }
+    if(item.notes){
+      const n = el('div','item-card-notes'); n.textContent=item.notes; body.appendChild(n);
+    }
+    // Bottom row: source + maps link + JDI
+    const bottom = el('div','item-card-bottom');
+    if(hasSource){ const st=el('span','source-tag'); st.textContent='via '+item.source; bottom.appendChild(st); }
+    if(item.mapsLink){
+      const ml = document.createElement('a');
+      ml.className='kindle-link'; ml.href=item.mapsLink; ml.target='_blank'; ml.rel='noopener';
+      ml.onclick=e=>e.stopPropagation();
+      ml.innerHTML='🗺️ Maps';
+      bottom.appendChild(ml);
+    }
+    if(isFuture){
+      const jdi=el('button','jdi-btn'); jdi.textContent='✓ Just Did It!';
+      jdi.onclick=e=>{e.stopPropagation();markDone(item.id);}; bottom.appendChild(jdi);
+    } else if(item.doneDate){
+      const done=el('span','jdi-done-tag');
+      done.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> ${esc(item.doneDate)}`;
+      bottom.appendChild(done);
+    }
+    body.appendChild(bottom);
   } else {
-    // Movies / TV: source flows naturally, JDI/done-date pushed to bottom
+    // Movies / TV / other: source flows naturally, JDI/done-date pushed to bottom
     if(hasSource){
       const st = el('span','source-tag'); st.textContent='via '+item.source;
       body.appendChild(st);
@@ -734,56 +787,140 @@ function markDone(id){
   const body = document.getElementById('sheetBody');
   body.innerHTML = '';
 
-  const JDI_ASPECTS = ['Storyline & writing','Direction','Acting','Thrill & excitement','Authenticity & emotion','Style & cinematography'];
-
-  // Heading
   const hd = el('div','jdi-sheet-head');
   hd.innerHTML = `<span class="jdi-sheet-label">How was it?</span>`;
   body.appendChild(hd);
 
-  // Star rating picker
-  body.appendChild(buildStarPicker('jdi-rating','Your Rating', item.rating||0));
-
-  // What I liked — aspect pills
-  const aspectRow = el('div','form-row');
-  const aspectLbl = document.createElement('label'); aspectLbl.textContent = 'What stood out?';
-  aspectRow.appendChild(aspectLbl);
-  const aspectWrap = el('div','jdi-aspects-wrap');
-  const currentAspects = item.likedAspects || [];
-  JDI_ASPECTS.forEach(a => {
-    const pill = el('button','jdi-aspect'+(currentAspects.includes(a)?' on':''));
-    pill.type='button'; pill.textContent=a;
-    pill.onclick = () => pill.classList.toggle('on');
-    aspectWrap.appendChild(pill);
-  });
-  aspectRow.appendChild(aspectWrap);
-  body.appendChild(aspectRow);
-
-  // Free-text review
-  const revRow = el('div','form-row');
-  revRow.innerHTML = `<label>Anything else? (optional)</label><textarea class="form-textarea" id="jdi-review" placeholder="A few words about what made it great…" rows="3">${esc(item.review||'')}</textarea>`;
-  body.appendChild(revRow);
-
   const actions = document.getElementById('sheetActions');
   actions.innerHTML = '';
-
   const cancelBtn = el('button','sheet-cancel');
   cancelBtn.textContent = 'Cancel'; cancelBtn.onclick = closeSheet;
-
   const saveBtn = el('button','sheet-save');
   saveBtn.innerHTML = '✓ Mark as Past';
-  saveBtn.onclick = () => {
-    item.status = 'done';
-    item.doneDate = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-    const ratingEl = document.getElementById('jdi-rating');
-    if(ratingEl) item.rating = parseInt(ratingEl.value)||0;
-    const reviewEl = document.getElementById('jdi-review');
-    if(reviewEl) item.review = reviewEl.value.trim();
-    item.likedAspects = [...aspectWrap.querySelectorAll('.jdi-aspect.on')].map(p=>p.textContent);
-    save(); closeSheet(); renderContent();
-  };
-
   actions.appendChild(cancelBtn); actions.appendChild(saveBtn);
+
+  if(c.id==='restaurants'){
+    // ── Date visited ──
+    const today = new Date().toISOString().slice(0,10);
+    const dateRow = el('div','form-row');
+    dateRow.innerHTML = `<label>Date visited</label><input class="form-input" type="date" id="jdi-visit-date" value="${esc(item.visitDate||today)}"/>`;
+    body.appendChild(dateRow);
+
+    // ── Star rating ──
+    body.appendChild(buildStarPicker('jdi-rating','My Rating', item.rating||0));
+
+    // ── What I liked — restaurant aspects ──
+    const RESTO_ASPECTS = ['Atmosphere','Food','Service','Setting'];
+    const aspectRow = el('div','form-row');
+    const aspectLbl = document.createElement('label'); aspectLbl.textContent='What I liked';
+    aspectRow.appendChild(aspectLbl);
+    const aspectWrap = el('div','jdi-aspects-wrap');
+    const currentAspects = item.likedAspects||[];
+    RESTO_ASPECTS.forEach(a => {
+      const pill = el('button','jdi-aspect'+(currentAspects.includes(a)?' on':''));
+      pill.type='button'; pill.textContent=a;
+      pill.onclick=()=>pill.classList.toggle('on');
+      aspectWrap.appendChild(pill);
+    });
+    aspectRow.appendChild(aspectWrap);
+    body.appendChild(aspectRow);
+
+    // ── Favourite dishes ──
+    const dishList = [...(item.favDishes||[])];
+    const dishRow = el('div','form-row');
+    const dishLbl = document.createElement('label'); dishLbl.textContent='Favourite dishes';
+    dishRow.appendChild(dishLbl);
+    const dishWrap = el('div','jdi-aspects-wrap'); dishWrap.id='jdi-dish-wrap';
+    function renderDishes(){
+      dishWrap.innerHTML='';
+      dishList.forEach((d,i)=>{
+        const p=el('span','jdi-aspect on'); p.style.cursor='pointer';
+        p.innerHTML=`${esc(d)} <span style="margin-left:4px;opacity:.6">×</span>`;
+        p.title='Click to remove';
+        p.onclick=()=>{dishList.splice(i,1);renderDishes();};
+        dishWrap.appendChild(p);
+      });
+    }
+    renderDishes();
+    dishRow.appendChild(dishWrap);
+    const dishInputRow = el('div'); dishInputRow.style.cssText='display:flex;gap:8px;margin-top:6px';
+    const dishInput = document.createElement('input');
+    dishInput.className='form-input'; dishInput.placeholder='e.g. Pasta carbonara';
+    dishInput.style.flex='1';
+    const dishAdd = el('button','poster-url-btn'); dishAdd.type='button'; dishAdd.textContent='+ Add';
+    function addDish(){
+      const d=dishInput.value.trim(); if(!d) return;
+      dishList.push(d); dishInput.value=''; renderDishes();
+    }
+    dishAdd.onclick=addDish;
+    dishInput.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addDish();}});
+    dishInputRow.appendChild(dishInput); dishInputRow.appendChild(dishAdd);
+    dishRow.appendChild(dishInputRow);
+    body.appendChild(dishRow);
+
+    // ── Price range ──
+    const priceRow = el('div','form-row');
+    const currentPrice = item.priceRange||'';
+    let priceHtml = `<label>Price range (per person)</label><select class="form-input" id="jdi-price">
+      <option value="">— select —</option>`;
+    [['budget','Up to $30'],['mid','$30–$75'],['upscale','$75–$150'],['fine','Above $150']].forEach(([v,l])=>{
+      priceHtml+=`<option value="${v}"${currentPrice===v?' selected':''}>${l}</option>`;
+    });
+    priceHtml+='</select>';
+    priceRow.innerHTML=priceHtml;
+    body.appendChild(priceRow);
+
+    // ── Review ──
+    const revRow = el('div','form-row');
+    revRow.innerHTML=`<label>Review (optional)</label><textarea class="form-textarea" id="jdi-review" placeholder="A few words about the experience…" rows="3">${esc(item.review||'')}</textarea>`;
+    body.appendChild(revRow);
+
+    saveBtn.onclick=()=>{
+      item.status='done';
+      const vd=document.getElementById('jdi-visit-date');
+      item.visitDate = vd&&vd.value ? vd.value : today;
+      item.doneDate = new Date(item.visitDate+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+      item.rating = parseInt((document.getElementById('jdi-rating')||{}).value)||0;
+      item.likedAspects = [...aspectWrap.querySelectorAll('.jdi-aspect.on')].map(p=>p.textContent);
+      item.favDishes = [...dishList];
+      item.priceRange = (document.getElementById('jdi-price')||{}).value||'';
+      item.review = ((document.getElementById('jdi-review')||{}).value||'').trim();
+      save(); closeSheet(); renderContent();
+    };
+
+  } else {
+    // ── Default JDI (movies, tv, books, etc.) ──
+    const JDI_ASPECTS = ['Storyline & writing','Direction','Acting','Thrill & excitement','Authenticity & emotion','Style & cinematography'];
+    body.appendChild(buildStarPicker('jdi-rating','Your Rating', item.rating||0));
+    const aspectRow = el('div','form-row');
+    const aspectLbl = document.createElement('label'); aspectLbl.textContent='What stood out?';
+    aspectRow.appendChild(aspectLbl);
+    const aspectWrap = el('div','jdi-aspects-wrap');
+    const currentAspects = item.likedAspects||[];
+    JDI_ASPECTS.forEach(a=>{
+      const pill=el('button','jdi-aspect'+(currentAspects.includes(a)?' on':''));
+      pill.type='button'; pill.textContent=a;
+      pill.onclick=()=>pill.classList.toggle('on');
+      aspectWrap.appendChild(pill);
+    });
+    aspectRow.appendChild(aspectWrap);
+    body.appendChild(aspectRow);
+    const revRow=el('div','form-row');
+    revRow.innerHTML=`<label>Anything else? (optional)</label><textarea class="form-textarea" id="jdi-review" placeholder="A few words about what made it great…" rows="3">${esc(item.review||'')}</textarea>`;
+    body.appendChild(revRow);
+
+    saveBtn.onclick=()=>{
+      item.status='done';
+      item.doneDate=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+      const ratingEl=document.getElementById('jdi-rating');
+      if(ratingEl) item.rating=parseInt(ratingEl.value)||0;
+      const reviewEl=document.getElementById('jdi-review');
+      if(reviewEl) item.review=reviewEl.value.trim();
+      item.likedAspects=[...aspectWrap.querySelectorAll('.jdi-aspect.on')].map(p=>p.textContent);
+      save(); closeSheet(); renderContent();
+    };
+  }
+
   openSheet();
 }
 
@@ -822,6 +959,21 @@ function openDetail(id){
     body.appendChild(buildDetailInfo(item,c));
   }
 
+  // Restaurant-specific detail
+  if(c.id==='restaurants'){
+    if(item.cuisine)  appendSection(body,'Cuisine',item.cuisine);
+    const loc = [item.city, item.country].filter(Boolean).join(', ');
+    if(loc) appendSection(body,'Location',loc);
+    if(item.mapsLink){
+      const s = el('div','detail-section');
+      const sl = el('div','detail-section-label'); sl.textContent='Google Maps'; s.appendChild(sl);
+      const a = document.createElement('a');
+      a.href=item.mapsLink; a.target='_blank'; a.rel='noopener';
+      a.className='kindle-link'; a.textContent='🗺️ Open in Maps';
+      s.appendChild(a); body.appendChild(s);
+    }
+  }
+
   // Synopsis
   const synopsis = item.synopsis || item.description;
   if(synopsis){
@@ -832,6 +984,13 @@ function openDetail(id){
   if(item.actors) appendSection(body,'Actors',item.actors);
 
   // Review (from Just Did It)
+  if(c.id==='restaurants'){
+    if(item.visitDate) appendSection(body,'Visited', new Date(item.visitDate+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}));
+    if(item.priceRange){
+      const priceLabels={budget:'Up to $30',mid:'$30–$75',upscale:'$75–$150',fine:'Above $150'};
+      appendSection(body,'Price range (per person)', priceLabels[item.priceRange]||item.priceRange);
+    }
+  }
   if(item.likedAspects&&item.likedAspects.length){
     const s = el('div','detail-section');
     const sl = el('div','detail-section-label'); sl.textContent='What I liked'; s.appendChild(sl);
@@ -840,6 +999,13 @@ function openDetail(id){
       const pill = el('span','jdi-aspect on'); pill.textContent=a; aw.appendChild(pill);
     });
     s.appendChild(aw); body.appendChild(s);
+  }
+  if(c.id==='restaurants'&&item.favDishes&&item.favDishes.length){
+    const s=el('div','detail-section');
+    const sl=el('div','detail-section-label'); sl.textContent='Favourite dishes'; s.appendChild(sl);
+    const dw=el('div','jdi-aspects-wrap'); dw.style.marginTop='6px';
+    item.favDishes.forEach(d=>{ const p=el('span','jdi-aspect on'); p.textContent=d; dw.appendChild(p); });
+    s.appendChild(dw); body.appendChild(s);
   }
   if(item.review) appendSection(body,'My review',item.review);
 
@@ -970,7 +1136,7 @@ function openForm(id){
 function buildForm(body, c, item){
   selectedGenresList = (item&&item.genres) ? [...item.genres] : [];
 
-  // Smart Update button
+  // Smart Update button (movies / tv / books)
   if(c.id==='movies'||c.id==='tv-shows'||c.id==='books'){
     const sb = el('button','smart-btn');
     sb.id='smartBtn'; sb.type='button';
@@ -979,15 +1145,29 @@ function buildForm(body, c, item){
     sb.onclick = smartUpdate;
     body.appendChild(sb);
     const ss = el('div','smart-status'); ss.id='smartStatus'; body.appendChild(ss);
-    // no key prompt needed — default key is built in
     const pc = el('div'); pc.id='pickerContainer'; body.appendChild(pc);
+  }
+
+  // Restaurants: Maps URL + Fetch button (shown before title, like the smart-update block)
+  if(c.id==='restaurants'){
+    const mapsRow = el('div','form-row');
+    mapsRow.innerHTML=`<label>Google Maps Link</label><div style="display:flex;gap:8px"><input class="form-input" id="f-maps" value="${esc(item&&item.mapsLink||'')}" placeholder="Paste Google Maps URL…" style="flex:1"/><button class="smart-btn" type="button" id="mapsSmartBtn" style="margin:0;width:auto;padding:8px 14px;white-space:nowrap">🗺️ Fetch</button></div>`;
+    body.appendChild(mapsRow);
+    const mss = el('div','smart-status'); mss.id='mapsSmartStatus'; body.appendChild(mss);
+    if(!localStorage.getItem('places_key')){
+      const kw = el('div'); kw.id='mapsKeyWrap';
+      kw.innerHTML=`<div class="form-row" style="margin-top:-4px"><label style="color:var(--muted);font-size:.78rem">Paste a Google Places API key to enable auto-fill</label><div style="display:flex;gap:8px"><input class="form-input" id="mapsKeyInput" placeholder="AIza…" style="flex:1"/><button class="poster-url-btn" type="button" onclick="savePlacesKey()">Save key</button></div></div>`;
+      body.appendChild(kw);
+    }
+    // wire up after appending so getElementById finds the button
+    setTimeout(()=>{ const b=document.getElementById('mapsSmartBtn'); if(b) b.onclick=fetchFromMaps; },0);
   }
 
   // Title
   appendFormRow(body,'Title','f-title','input',item&&item.title||'');
 
-  // Poster (movies, tv-shows, books)
-  if(c.id==='movies'||c.id==='tv-shows'||c.id==='books'){
+  // Poster (movies, tv-shows, books, restaurants)
+  if(c.id==='movies'||c.id==='tv-shows'||c.id==='books'||c.id==='restaurants'){
     body.appendChild(buildPosterSection(item&&item.poster));
   }
 
@@ -1001,7 +1181,7 @@ function buildForm(body, c, item){
   }
 
   // Year
-  appendFormRow(body,'Year','f-year','input',item&&item.year||'');
+  if(c.id!=='restaurants') appendFormRow(body,'Year','f-year','input',item&&item.year||'');
 
   // Movies/TV fields
   if(c.id==='movies'||c.id==='tv-shows'){
@@ -1055,8 +1235,25 @@ function buildForm(body, c, item){
     genreRow.appendChild(gw); body.appendChild(genreRow);
   }
 
-  // Generic notes (not movies/tv/books)
-  if(c.id!=='movies'&&c.id!=='tv-shows'&&c.id!=='books'){
+  // Restaurant-specific fields
+  if(c.id==='restaurants'){
+    appendFormRow(body,'Cuisine','f-cuisine','input',item&&item.cuisine||'');
+    appendFormRow(body,'City','f-city','input',item&&item.city||'');
+    appendFormRow(body,'Country','f-country','input',item&&item.country||'');
+    // Price range
+    const prRow = el('div','form-row');
+    const curPr = item&&item.priceRange||'';
+    let prHtml=`<label>Price range (per person)</label><select class="form-input" id="f-price"><option value="">— select —</option>`;
+    [['budget','Up to $30'],['mid','$30–$75'],['upscale','$75–$150'],['fine','Above $150']].forEach(([val,lbl])=>{
+      prHtml+=`<option value="${val}"${curPr===val?' selected':''}>${lbl}</option>`;
+    });
+    prHtml+='</select>';
+    prRow.innerHTML=prHtml; body.appendChild(prRow);
+    appendFormRow(body,'Notes (optional)','f-notes','textarea',item&&item.notes||'');
+  }
+
+  // Generic notes (not movies/tv/books/restaurants)
+  if(c.id!=='movies'&&c.id!=='tv-shows'&&c.id!=='books'&&c.id!=='restaurants'){
     appendFormRow(body,'Notes','f-notes','textarea',item&&(item.notes||item.description||item.reasons)||'');
   }
 
@@ -1086,7 +1283,7 @@ function buildForm(body, c, item){
 
   // Source of recommendation
   const sourceVal = (item&&item.source&&item.source!=='N/A') ? item.source : '';
-  appendFormRow(body,'Source of Recommendation (optional)','f-source','input',sourceVal);
+  buildSourceField(body, c, sourceVal);
 }
 
 function appendFormRow(body, label, inputId, type, value){
@@ -1099,10 +1296,54 @@ function appendFormRow(body, label, inputId, type, value){
   body.appendChild(row);
 }
 
+function buildSourceField(body, c, sourceVal){
+  const presets = {
+    'movies':   ['Filmspotting','Dan Murrell','Geekonomy','X/Twitter'],
+    'tv-shows': ['Filmspotting','Dan Murrell','Geekonomy','X/Twitter'],
+    'books':    ['Geekonomy','Acquired'],
+  };
+  const opts = presets[c.id];
+  if(!opts){
+    appendFormRow(body,'Source of Recommendation (optional)','f-source','input',sourceVal);
+    return;
+  }
+
+  const knownOpt = opts.find(o => o === sourceVal);
+  const selectVal = knownOpt ? knownOpt : (sourceVal ? 'Other' : '');
+  const otherVal  = (!knownOpt && sourceVal) ? sourceVal : '';
+
+  // Dropdown row
+  const row = el('div','form-row');
+  let html = `<label>Source of Recommendation (optional)</label>
+    <select class="form-input" id="f-source-pick">
+      <option value="">— select —</option>`;
+  opts.forEach(o => {
+    html += `<option value="${esc(o)}"${o===selectVal?' selected':''}>${esc(o)}</option>`;
+  });
+  html += `<option value="Other"${selectVal==='Other'?' selected':''}>Other</option></select>`;
+  row.innerHTML = html;
+  body.appendChild(row);
+
+  // Free-text row (shown when Other is selected)
+  const otherRow = el('div','form-row');
+  otherRow.id = 'f-source-other-row';
+  otherRow.style.display = selectVal==='Other' ? '' : 'none';
+  otherRow.innerHTML = `<label>Specify source</label><input class="form-input" id="f-source-other" value="${esc(otherVal)}" placeholder="e.g. a friend, podcast…"/>`;
+  body.appendChild(otherRow);
+
+  row.querySelector('select').addEventListener('change', function(){
+    otherRow.style.display = this.value==='Other' ? '' : 'none';
+    if(this.value==='Other'){
+      const inp = document.getElementById('f-source-other');
+      if(inp){ inp.focus(); }
+    }
+  });
+}
+
 // ─── Poster section ───────────────────────────────────────────────────────────
 function buildPosterSection(posterUrl){
   const wrap = el('div','poster-section');
-  const lbl = document.createElement('label'); lbl.textContent='Poster'; wrap.appendChild(lbl);
+  const lbl = document.createElement('label'); lbl.textContent='Poster (optional)'; wrap.appendChild(lbl);
   const inner = el('div'); inner.id='posterSection'; wrap.appendChild(inner);
 
   function showUploadArea(){
@@ -1185,7 +1426,7 @@ function saveItem(){
     doneDate: existing ? existing.doneDate : (tab==='done' ? new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : null),
     title: titleVal,
     year: v('f-year'),
-    source: v('f-source')||'N/A',
+    source: (()=>{ const p=document.getElementById('f-source-pick'); if(p) return p.value==='Other' ? (v('f-source-other')||'') : p.value; return v('f-source'); })()||'N/A',
     poster: posterUrl || (existing ? existing.poster : null),
   };
 
@@ -1226,7 +1467,15 @@ function saveItem(){
     obj.kindleLink = v('f-kindle');
     obj.genres = selectedGenres();
   }
-  if(c.id!=='movies'&&c.id!=='tv-shows'&&c.id!=='books'){
+  if(c.id==='restaurants'){
+    obj.cuisine    = v('f-cuisine');
+    obj.city       = v('f-city');
+    obj.country    = v('f-country');
+    obj.mapsLink   = v('f-maps');
+    obj.priceRange = v('f-price');
+    obj.notes      = v('f-notes');
+  }
+  if(c.id!=='movies'&&c.id!=='tv-shows'&&c.id!=='books'&&c.id!=='restaurants'){
     obj.notes = v('f-notes');
   }
 
@@ -1247,6 +1496,96 @@ function smartUpdate(){
 }
 
 function setSmartStatus(msg){ const e=document.getElementById('smartStatus'); if(e) e.textContent=msg; }
+function setMapsStatus(msg){ const e=document.getElementById('mapsSmartStatus'); if(e) e.textContent=msg; }
+
+// ── Google Places ─────────────────────────────────────────────────────────────
+window.savePlacesKey = function(){
+  const k=(document.getElementById('mapsKeyInput')||{}).value||'';
+  if(!k) return;
+  localStorage.setItem('places_key',k);
+  const w=document.getElementById('mapsKeyWrap'); if(w) w.remove();
+  setMapsStatus('API key saved — click Fetch to auto-fill.');
+};
+
+async function fetchFromMaps(){
+  const urlEl = document.getElementById('f-maps');
+  const url = urlEl ? urlEl.value.trim() : '';
+  if(!url){ setMapsStatus('Paste a Google Maps link first.'); return; }
+
+  const key = localStorage.getItem('places_key');
+  if(!key){ setMapsStatus('Save a Google Places API key first.'); return; }
+
+  // Extract place name from URL path: /maps/place/Name/@...
+  const nameMatch = url.match(/\/maps\/place\/([^/@?#]+)/);
+  const query = nameMatch ? decodeURIComponent(nameMatch[1].replace(/\+/g,' ')) : '';
+  if(!query){ setMapsStatus('Could not read place name from URL. Try a full Maps link.'); return; }
+
+  setMapsStatus('Searching…');
+  try{
+    const res = await fetch('https://places.googleapis.com/v1/places:searchText',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'X-Goog-Api-Key': key,
+        'X-Goog-FieldMask':'places.displayName,places.addressComponents,places.primaryTypeDisplayName,places.types,places.priceLevel,places.photos'
+      },
+      body: JSON.stringify({ textQuery: query, languageCode:'en' })
+    });
+    const data = await res.json();
+    if(data.error){ setMapsStatus('API error: '+data.error.message); return; }
+    const place = (data.places||[])[0];
+    if(!place){ setMapsStatus('No results found.'); return; }
+
+    // Name
+    if(place.displayName) setField('f-title', place.displayName.text);
+
+    // City + Country from address components
+    let city='', country='';
+    (place.addressComponents||[]).forEach(comp=>{
+      if(comp.types.includes('locality'))                              city    = comp.longText;
+      if(comp.types.includes('administrative_area_level_1') && !city) city    = comp.longText;
+      if(comp.types.includes('country'))                              country = comp.longText;
+    });
+    if(city)    setField('f-city', city);
+    if(country) setField('f-country', country);
+
+    // Cuisine from primaryTypeDisplayName (e.g. "Italian restaurant" → "Italian")
+    if(place.primaryTypeDisplayName){
+      const raw = place.primaryTypeDisplayName.text||'';
+      const cuisine = raw.replace(/\s*restaurant\b/i,'').trim();
+      if(cuisine && !['food','establishment','restaurant'].includes(cuisine.toLowerCase())){
+        setField('f-cuisine', cuisine);
+      }
+    }
+
+    // Price level → our dropdown buckets
+    const priceLevelMap = {
+      PRICE_LEVEL_INEXPENSIVE: 'budget',
+      PRICE_LEVEL_MODERATE:    'mid',
+      PRICE_LEVEL_EXPENSIVE:   'upscale',
+      PRICE_LEVEL_VERY_EXPENSIVE: 'fine'
+    };
+    if(place.priceLevel && priceLevelMap[place.priceLevel]){
+      const sel = document.getElementById('f-price');
+      if(sel) sel.value = priceLevelMap[place.priceLevel];
+    }
+
+    // Cover photo — fetch the redirect URL then set as poster
+    if(place.photos && place.photos.length){
+      setMapsStatus('Fetching cover image…');
+      try{
+        const photoName = place.photos[0].name;
+        const photoRes = await fetch(
+          `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=800&skipHttpRedirect=true&key=${key}`
+        );
+        const photoData = await photoRes.json();
+        if(photoData.photoUri) setFormPoster(photoData.photoUri);
+      } catch(_){}
+    }
+
+    setMapsStatus('✓ Done! Review and adjust the fields below.');
+  } catch(e){ setMapsStatus('Error: '+e.message); }
+}
 
 function saveOmdbKey(){
   const k=v('omdbKeyInput').trim(); if(!k) return;
@@ -1437,7 +1776,54 @@ function closeSheet(){
   document.body.style.overflow='';
 }
 function overlayClick(e){
-  if(e.target===document.getElementById('sheetOverlay')) closeSheet();
+  // do not close on outside click — only explicit Cancel/X closes the sheet
+}
+
+// ─── CSV Export ───────────────────────────────────────────────────────────────
+function exportCSV(){
+  const cols = [
+    'Category','Title','Status','Year','Source','Rating','Match',
+    'Director','Author','Cuisine','City','Country','Price Range',
+    'Visit Date','Done Date','Liked Aspects','Favourite Dishes',
+    'Review','Notes','Genres','Poster'
+  ];
+  const priceLabels={budget:'Up to $30',mid:'$30–$75',upscale:'$75–$150',fine:'Above $150'};
+
+  const rows = items.map(item => {
+    const c = getCat(item.cat);
+    return [
+      c.label,
+      item.title||'',
+      item.status||'',
+      item.year||'',
+      (item.source&&item.source!=='N/A') ? item.source : '',
+      item.rating||'',
+      item.match||'',
+      item.director||'',
+      item.author||'',
+      item.cuisine||'',
+      item.city||'',
+      item.country||'',
+      item.priceRange ? (priceLabels[item.priceRange]||item.priceRange) : '',
+      item.visitDate||'',
+      item.doneDate||'',
+      (item.likedAspects||[]).join('; '),
+      (item.favDishes||[]).join('; '),
+      item.review||'',
+      item.notes||'',
+      (item.genres||[]).join('; '),
+      item.poster||''
+    ].map(val => `"${String(val).replace(/"/g,'""')}"`);
+  });
+
+  const csv = [cols.map(c=>`"${c}"`).join(','), ...rows.map(r=>r.join(','))].join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `wishlist-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────

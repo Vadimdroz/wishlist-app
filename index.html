@@ -29,6 +29,10 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .nav{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:50}
 .export-btn{display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--muted);font-size:.75rem;font-weight:600;cursor:pointer;transition:.15s}
 .export-btn:hover{color:var(--text);border-color:rgba(255,255,255,.2)}
+.trip-type-wrap{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.trip-type-pill{padding:6px 14px;border-radius:20px;font-size:.82rem;font-weight:600;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;transition:.15s}
+.trip-type-pill.on{background:rgba(59,130,246,.2);color:#93c5fd;border-color:rgba(59,130,246,.4)}
+.pdf-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;font-size:.78rem;font-weight:600;background:rgba(239,68,68,.12);color:#fca5a5;border:1px solid rgba(239,68,68,.25);text-decoration:none;cursor:pointer}
 .nav-logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:1.1rem;letter-spacing:-.02em;cursor:pointer;user-select:none}
 .nav-logo svg{width:34px;height:34px;flex-shrink:0}
 
@@ -226,6 +230,19 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .omdb-key-wrap{background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:14px}
 .omdb-key-wrap p{font-size:.78rem;color:var(--muted);margin-bottom:8px}
 .omdb-key-row{display:flex;gap:6px}
+
+/* Stuff mode toggle */
+.mode-toggle-wrap{display:flex;gap:6px;margin-top:4px}
+.mode-btn{padding:7px 16px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:.82rem;cursor:pointer;transition:all .15s}
+.mode-btn.active{background:rgba(236,72,153,.15);color:#f9a8d4;border-color:rgba(236,72,153,.3)}
+/* Research option cards */
+.research-option-card{display:flex;gap:10px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-bottom:8px}
+.research-opt-img{width:64px;height:64px;object-fit:cover;border-radius:6px;flex-shrink:0}
+.research-opt-body{flex:1;min-width:0}
+.research-opt-name{font-size:.85rem;font-weight:600;color:var(--text);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.research-opt-price{font-size:.8rem;color:#fbbf24;margin-bottom:3px}
+.research-opt-desc{font-size:.75rem;color:var(--muted);margin-bottom:6px;line-height:1.4}
+.research-opt-actions{display:flex;gap:6px}
 </style>
 </head>
 <body>
@@ -300,13 +317,16 @@ const CATS = [
   {id:'tv-shows',label:'TV Shows',emoji:'📺',color:'#6366f1',img:'https://images.unsplash.com/photo-1461151304267-38535e780c79?w=480&h=360&fit=crop&q=80',subs:[]},
   {id:'experiences',label:'Experiences',emoji:'🎭',color:'#f59e0b',img:'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=480&h=360&fit=crop&q=80',subs:[]},
   {id:'books',label:'Books',emoji:'📚',color:'#10b981',img:'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=480&h=360&fit=crop&q=80',subs:[]},
-  {id:'stuff',label:'Stuff',emoji:'🛍️',color:'#ec4899',img:'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=480&h=360&fit=crop&q=80',subs:[{id:'myself',label:'For Myself'},{id:'others',label:'For Others'}]},
+  {id:'stuff',label:'Stuff',emoji:'🛍️',color:'#ec4899',img:'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=480&h=360&fit=crop&q=80',subs:[{id:'vadim',label:'Vadim'},{id:'ira',label:'Ira'},{id:'kids',label:'Kids'},{id:'other',label:'Other'}]},
   {id:'restaurants',label:'Restaurants',emoji:'🍽️',color:'#ef4444',img:'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=480&h=360&fit=crop&q=80',subs:[]},
-  {id:'trips',label:'Trips',emoji:'✈️',color:'#3b82f6',img:'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=480&h=360&fit=crop&q=80',subs:[{id:'israel',label:'Israel'},{id:'abroad',label:'Abroad'}]},
+  {id:'local-trips',label:'Local Trips',emoji:'🚗',color:'#3b82f6',img:'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=480&h=360&fit=crop&q=80',subs:[{id:'day-trips',label:'Day Trips'},{id:'hotels',label:'Hotels & Overnight'}]},
+  {id:'intl-trips',label:'International Trips',emoji:'✈️',color:'#0ea5e9',img:'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=480&h=360&fit=crop&q=80',subs:[]},
 ];
 const BOOK_GENRES = ['Sci-fi','Health','Business','Investing','History','Biography','Philosophy','Geo-Politics','Self Improvement'];
 const YT_KEY = 'AIzaSyCUhLADIiLB4AN5A3wdwXd8X_D8PnOnNBg';
 const OMDB_KEY_DEFAULT = '919ea22c';
+const ROUTES_KEY_DEFAULT = 'AIzaSyCHKz6hURTGwVC-Ev_BT_ZB8eAwQvod4pE';
+const CLAUDE_KEY_DEFAULT = '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';
 
 // ─── State ────────────────────────────────────────────────────────────────────
 // Recovery: merge data from all known keys so nothing is lost
@@ -352,6 +372,11 @@ let items = JSON.parse(localStorage.getItem('wl_v3') || '[]');
 items = items.map(i => {
   if (i.cat !== 'tv') return i;
   return {...i, cat: i.sub === 'tv-show' ? 'tv-shows' : 'movies', sub: null};
+});
+// migrate old 'trips' category → local-trips / intl-trips
+items = items.map(i => {
+  if (i.cat !== 'trips') return i;
+  return {...i, cat: i.sub === 'israel' ? 'local-trips' : 'intl-trips', sub: null};
 });
 save();
 
@@ -591,8 +616,8 @@ function buildItemCard(item, c){
 
   const inner = el('div','item-card-inner');
 
-  // Poster for movies, tv-shows, books, restaurants
-  if(c.id==='movies'||c.id==='tv-shows'||c.id==='books'||c.id==='restaurants'){
+  // Poster for movies, tv-shows, books, restaurants, local-trips, intl-trips, stuff
+  if(c.id==='movies'||c.id==='tv-shows'||c.id==='books'||c.id==='restaurants'||c.id==='local-trips'||c.id==='intl-trips'||c.id==='stuff'){
     if(item.poster && item.poster!=='N/A'){
       const img = document.createElement('img');
       img.className = 'item-card-poster';
@@ -740,6 +765,63 @@ function buildItemCard(item, c){
       bottom.appendChild(done);
     }
     body.appendChild(bottom);
+  } else if(c.id==='intl-trips'){
+    if(item.tripDesc){ const d=el('div','item-card-notes'); d.style.cssText='font-style:italic;margin-top:4px'; d.textContent=item.tripDesc; body.appendChild(d); }
+    const itMeta=el('div','item-card-meta'); itMeta.style.marginTop='4px';
+    if(item.bestTime)     itMeta.insertAdjacentHTML('beforeend',`<span class="badge badge-year">🗓 ${esc(item.bestTime)}</span>`);
+    if(item.tripDuration) itMeta.insertAdjacentHTML('beforeend',`<span class="badge badge-year">⏱ ${esc(item.tripDuration)}</span>`);
+    if(item.weather)      itMeta.insertAdjacentHTML('beforeend',`<span class="badge badge-year">🌤 ${esc(item.weather)}</span>`);
+    if(itMeta.children.length) body.appendChild(itMeta);
+    const bottom=el('div','item-card-bottom');
+    if(hasSource){ const st=el('span','source-tag'); st.textContent='via '+item.source; bottom.appendChild(st); }
+    if(isFuture){ const jdi=el('button','jdi-btn'); jdi.textContent='✓ Just Did It!'; jdi.onclick=e=>{e.stopPropagation();markDone(item.id);}; bottom.appendChild(jdi); }
+    else if(item.doneDate){ const done=el('span','jdi-done-tag'); done.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> ${esc(item.doneDate)}`; bottom.appendChild(done); }
+    body.appendChild(bottom);
+  } else if(c.id==='local-trips'){
+    // Type + region row
+    const ltMeta=el('div','item-card-meta'); ltMeta.style.marginTop='4px';
+    if(item.tripType) ltMeta.insertAdjacentHTML('beforeend',`<span class="genre-pill on" style="pointer-events:none">${esc(item.tripType)}</span>`);
+    if(item.region)   ltMeta.insertAdjacentHTML('beforeend',`<span class="badge badge-year">📍 ${esc(item.region)}</span>`);
+    if(item.commute)  ltMeta.insertAdjacentHTML('beforeend',`<span class="badge badge-year">🚗 ${esc(item.commute)}</span>`);
+    if(ltMeta.children.length) body.appendChild(ltMeta);
+    if(item.notForKids) body.insertAdjacentHTML('beforeend','<span class="fit-badge" style="background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.3);margin-top:4px;display:inline-block">🚫👶 Not for kids</span>');
+    if(item.advice){ const a=el('div','item-card-notes'); a.style.cssText='color:#fbbf24;margin-top:3px'; a.textContent='⚠️ '+item.advice; body.appendChild(a); }
+    const bottom=el('div','item-card-bottom');
+    if(hasSource){ const st=el('span','source-tag'); st.textContent='via '+item.source; bottom.appendChild(st); }
+    if(item.mapsLink){ const ml=document.createElement('a'); ml.className='kindle-link'; ml.href=item.mapsLink; ml.target='_blank'; ml.rel='noopener'; ml.onclick=e=>e.stopPropagation(); ml.innerHTML='🗺️ Maps'; bottom.appendChild(ml); }
+    if(item.infoLink){ const il=document.createElement('a'); il.className='kindle-link'; il.href=item.infoLink; il.target='_blank'; il.rel='noopener'; il.onclick=e=>e.stopPropagation(); il.innerHTML='🔗 Info'; bottom.appendChild(il); }
+    if(item.pdfData){ const pb=el('button','pdf-btn'); pb.onclick=e=>{e.stopPropagation(); const a=document.createElement('a'); a.href=item.pdfData; a.download='trail.pdf'; a.click();}; pb.textContent='📄 PDF'; bottom.appendChild(pb); }
+    if(isFuture){ const jdi=el('button','jdi-btn'); jdi.textContent='✓ Just Did It!'; jdi.onclick=e=>{e.stopPropagation();markDone(item.id);}; bottom.appendChild(jdi); }
+    else if(item.doneDate){ const done=el('span','jdi-done-tag'); done.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> ${esc(item.doneDate)}`; bottom.appendChild(done); }
+    body.appendChild(bottom);
+  } else if(c.id==='stuff'){
+    const isToBuy=item.mode==='to-buy'||!item.mode;
+    const isResearch=item.mode==='to-research';
+    // Mode badge
+    const modeBadge=el('span','badge badge-year');
+    modeBadge.style.cssText=isToBuy?'background:rgba(16,185,129,.15);color:#34d399;border:1px solid rgba(16,185,129,.25)':'background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.25)';
+    modeBadge.textContent=isToBuy?'🛒 To Buy':'🔍 Research';
+    const modeRow=el('div','item-card-meta'); modeRow.style.marginTop='4px';
+    modeRow.appendChild(modeBadge);
+    if(item.sub){ const sub=c.subs.find(s=>s.id===item.sub); if(sub){ const sb=el('span','badge badge-year'); sb.textContent='👤 '+sub.label; modeRow.appendChild(sb); }}
+    body.appendChild(modeRow);
+    if(isToBuy){
+      if(item.price){ const pr=el('div','item-card-meta'); pr.style.marginTop='3px'; pr.insertAdjacentHTML('beforeend',`<span class="badge badge-year" style="color:#fbbf24">💰 ${esc(item.price)}</span>`); body.appendChild(pr); }
+      if(item.pros){ const pd=el('div','item-card-notes'); pd.style.cssText='margin-top:3px;color:#86efac'; pd.textContent='✓ '+item.pros.slice(0,80)+(item.pros.length>80?'…':''); body.appendChild(pd); }
+      if(item.cons){ const cd=el('div','item-card-notes'); cd.style.cssText='margin-top:2px;color:#fca5a5'; cd.textContent='✗ '+item.cons.slice(0,80)+(item.cons.length>80?'…':''); body.appendChild(cd); }
+    } else {
+      const cnt=(item.options||[]).length;
+      const optBadge=el('span','badge badge-year'); optBadge.textContent=cnt+' option'+(cnt!==1?'s':'');
+      const optRow=el('div','item-card-meta'); optRow.style.marginTop='4px'; optRow.appendChild(optBadge); body.appendChild(optRow);
+      if(item.researchTopic&&item.researchTopic!==item.title){ const td=el('div','item-card-notes'); td.style.marginTop='3px'; td.textContent=item.researchTopic; body.appendChild(td); }
+    }
+    if(item.notes){ const nd=el('div','item-card-notes'); nd.textContent=item.notes; body.appendChild(nd); }
+    // Product link
+    const bottom=el('div','item-card-bottom');
+    if(item.productUrl){ const al=document.createElement('a'); al.className='kindle-link'; al.href=item.productUrl; al.target='_blank'; al.rel='noopener'; al.onclick=e=>e.stopPropagation(); al.innerHTML='🔗 View'; bottom.appendChild(al); }
+    if(isFuture){ const jdi=el('button','jdi-btn'); jdi.textContent='✓ Done!'; jdi.onclick=e=>{e.stopPropagation();markDone(item.id);}; bottom.appendChild(jdi); }
+    else if(item.doneDate){ const done=el('span','jdi-done-tag'); done.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> ${esc(item.doneDate)}`; bottom.appendChild(done); }
+    if(bottom.children.length) body.appendChild(bottom);
   } else {
     // Movies / TV / other: source flows naturally, JDI/done-date pushed to bottom
     if(hasSource){
@@ -959,6 +1041,52 @@ function openDetail(id){
     body.appendChild(buildDetailInfo(item,c));
   }
 
+  // International trips detail
+  if(c.id==='intl-trips'){
+    if(item.tripDesc)     appendSection(body,'Trip description',item.tripDesc);
+    if(item.bestTime)     appendSection(body,'Best time of year',item.bestTime);
+    if(item.tripDuration) appendSection(body,'Trip duration',item.tripDuration);
+    if(item.mustSee){
+      const s=el('div','detail-section');
+      const sl=el('div','detail-section-label'); sl.textContent='Must-see destinations'; s.appendChild(sl);
+      const sv=el('div','detail-section-value'); sv.style.whiteSpace='pre-wrap'; sv.textContent=item.mustSee;
+      s.appendChild(sv); body.appendChild(s);
+    }
+    if(item.weather)  appendSection(body,'Weather',item.weather);
+    if(item.notes)    appendSection(body,'Notes',item.notes);
+  }
+
+  // Local-trips detail
+  if(c.id==='local-trips'){
+    if(item.tripType) appendSection(body,'Type',item.tripType);
+    if(item.region)   appendSection(body,'Region',item.region);
+    if(item.commute)  appendSection(body,'Commute from home',item.commute);
+    if(item.tripType==='Nature'){
+      if(item.trailHours) appendSection(body,'Trail length',item.trailHours+' hrs');
+      if(item.hasWater!=null) appendSection(body,'Water on trail',item.hasWater?'Yes':'No');
+      if(item.bestSeason)  appendSection(body,'Best time of year',item.bestSeason);
+      if(item.notForKids)  appendSection(body,'Suitability','🚫👶 Not suitable for kids');
+    }
+    if(item.description) appendSection(body,'Description',item.description);
+    if(item.advice)      appendSection(body,'⚠️ Important advice',item.advice);
+    if(item.infoLink){
+      const s=el('div','detail-section'); const sl=el('div','detail-section-label'); sl.textContent='Additional Info'; s.appendChild(sl);
+      const a=document.createElement('a'); a.href=item.infoLink; a.target='_blank'; a.rel='noopener'; a.className='kindle-link'; a.textContent='🔗 Open link';
+      s.appendChild(a); body.appendChild(s);
+    }
+    if(item.mapsLink){
+      const s=el('div','detail-section'); const sl=el('div','detail-section-label'); sl.textContent='Google Maps'; s.appendChild(sl);
+      const a=document.createElement('a'); a.href=item.mapsLink; a.target='_blank'; a.rel='noopener'; a.className='kindle-link'; a.textContent='🗺️ Open in Maps';
+      s.appendChild(a); body.appendChild(s);
+    }
+    if(item.pdfData){
+      const s=el('div','detail-section'); const sl=el('div','detail-section-label'); sl.textContent='PDF'; s.appendChild(sl);
+      const pb=el('button','pdf-btn'); pb.textContent='📄 Download PDF';
+      pb.onclick=()=>{ const a=document.createElement('a'); a.href=item.pdfData; a.download='trail.pdf'; a.click(); };
+      s.appendChild(pb); body.appendChild(s);
+    }
+  }
+
   // Restaurant-specific detail
   if(c.id==='restaurants'){
     if(item.cuisine)  appendSection(body,'Cuisine',item.cuisine);
@@ -1166,8 +1294,8 @@ function buildForm(body, c, item){
   // Title
   appendFormRow(body,'Title','f-title','input',item&&item.title||'');
 
-  // Poster (movies, tv-shows, books, restaurants)
-  if(c.id==='movies'||c.id==='tv-shows'||c.id==='books'||c.id==='restaurants'){
+  // Poster (movies, tv-shows, books, restaurants, local-trips, intl-trips, stuff)
+  if(c.id==='movies'||c.id==='tv-shows'||c.id==='books'||c.id==='restaurants'||c.id==='local-trips'||c.id==='intl-trips'||c.id==='stuff'){
     body.appendChild(buildPosterSection(item&&item.poster));
   }
 
@@ -1175,13 +1303,14 @@ function buildForm(body, c, item){
   if(c.subs.length){
     const subRow = el('div','form-row');
     subRow.innerHTML=`<label>Category</label><select class="form-select" id="f-sub">
+      <option value="">— unassigned —</option>
       ${c.subs.map(s=>`<option value="${s.id}"${item&&item.sub===s.id?' selected':''}>${s.label}</option>`).join('')}
     </select>`;
     body.appendChild(subRow);
   }
 
   // Year
-  if(c.id!=='restaurants') appendFormRow(body,'Year','f-year','input',item&&item.year||'');
+  if(c.id!=='restaurants'&&c.id!=='local-trips'&&c.id!=='intl-trips'&&c.id!=='stuff') appendFormRow(body,'Year','f-year','input',item&&item.year||'');
 
   // Movies/TV fields
   if(c.id==='movies'||c.id==='tv-shows'){
@@ -1252,8 +1381,192 @@ function buildForm(body, c, item){
     appendFormRow(body,'Notes (optional)','f-notes','textarea',item&&item.notes||'');
   }
 
-  // Generic notes (not movies/tv/books/restaurants)
-  if(c.id!=='movies'&&c.id!=='tv-shows'&&c.id!=='books'&&c.id!=='restaurants'){
+  // Local trips fields
+  if(c.id==='local-trips'){
+    // Maps Smart Update
+    const ltMapsRow = el('div','form-row');
+    ltMapsRow.innerHTML=`<label>Google Maps Link</label><div style="display:flex;gap:8px"><input class="form-input" id="f-maps" value="${esc(item&&item.mapsLink||'')}" placeholder="Paste Google Maps URL…" style="flex:1"/><button class="smart-btn" type="button" id="ltMapsBtn" style="margin:0;width:auto;padding:8px 14px;white-space:nowrap">🗺️ Fetch</button></div>`;
+    body.appendChild(ltMapsRow);
+    const ltSt = el('div','smart-status'); ltSt.id='ltMapsStatus'; body.appendChild(ltSt);
+    if(!localStorage.getItem('places_key')){
+      const kw=el('div'); kw.id='ltKeyWrap';
+      kw.innerHTML=`<div class="form-row" style="margin-top:-4px"><label style="color:var(--muted);font-size:.78rem">Google Places API key needed to fetch data</label><div style="display:flex;gap:8px"><input class="form-input" id="ltKeyInput" placeholder="AIza…" style="flex:1"/><button class="poster-url-btn" type="button" onclick="savePlacesKey()">Save key</button></div></div>`;
+      body.appendChild(kw);
+    }
+    setTimeout(()=>{ const b=document.getElementById('ltMapsBtn'); if(b) b.onclick=fetchFromMapsLocalTrip; },0);
+
+    // Type picker
+    const typeRow = el('div','form-row');
+    typeRow.innerHTML='<label>Type</label>';
+    const typeWrap = el('div','trip-type-wrap');
+    const curType = item&&item.tripType||'';
+    ['Nature','Culture','Fun'].forEach(t=>{
+      const p=el('button','trip-type-pill'+(curType===t?' on':'')); p.type='button'; p.textContent=t;
+      p.onclick=()=>{
+        typeWrap.querySelectorAll('.trip-type-pill').forEach(x=>x.classList.remove('on'));
+        p.classList.add('on');
+        document.getElementById('f-trip-type').value=t;
+        toggleNatureFields(t);
+      };
+      typeWrap.appendChild(p);
+    });
+    typeRow.appendChild(typeWrap);
+    const typeHidden=document.createElement('input'); typeHidden.type='hidden'; typeHidden.id='f-trip-type'; typeHidden.value=curType;
+    typeRow.appendChild(typeHidden);
+    body.appendChild(typeRow);
+
+    appendFormRow(body,'Region','f-region','input',item&&item.region||'');
+
+    // Commute from home
+    const comRow=el('div','form-row');
+    comRow.innerHTML=`<label>Commute from home</label><div style="display:flex;gap:8px"><input class="form-input" id="f-commute" value="${esc(item&&item.commute||'')}" placeholder="e.g. 1h 20min" style="flex:1"/><button class="poster-url-btn" type="button" id="calcCommuteBtn">🧭 Calculate</button></div>`;
+    body.appendChild(comRow);
+    const comSt=el('div'); comSt.id='commuteSt'; comSt.style.cssText='font-size:.78rem;color:var(--muted);margin-top:2px';
+    body.appendChild(comSt);
+    setTimeout(()=>{ const b=document.getElementById('calcCommuteBtn'); if(b) b.onclick=calcCommute; },0);
+
+    // Nature-only fields (shown/hidden by type)
+    const natureWrap=el('div'); natureWrap.id='natureFields';
+    natureWrap.style.display=curType==='Nature'?'':'none';
+    const trailRow=el('div','form-row');
+    trailRow.innerHTML=`<label>Trail length (hours)</label><input class="form-input" id="f-trail-hours" type="number" min="0" step="0.5" value="${esc(item&&item.trailHours||'')}"/>`;
+    natureWrap.appendChild(trailRow);
+    const waterRow=el('div','form-row');
+    const waterVal=item&&item.hasWater;
+    waterRow.innerHTML=`<label>Water on trail</label><div style="display:flex;gap:10px;margin-top:4px">
+      <label style="display:flex;align-items:center;gap:6px;font-size:.88rem;cursor:pointer"><input type="radio" name="f-water" value="yes"${waterVal===true?' checked':''}/> Yes</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:.88rem;cursor:pointer"><input type="radio" name="f-water" value="no"${waterVal===false?' checked':''}/> No</label>
+    </div>`;
+    natureWrap.appendChild(waterRow);
+    appendFormRow(natureWrap,'Best time of year','f-best-season','input',item&&item.bestSeason||'');
+    const kidsRow=el('div','form-row');
+    kidsRow.innerHTML=`<label class="check-item"><input type="checkbox" id="f-not-kids"${item&&item.notForKids?' checked':''}/> 🚫👶 Not suitable for kids</label>`;
+    natureWrap.appendChild(kidsRow);
+    body.appendChild(natureWrap);
+
+    appendFormRow(body,'Description','f-description','textarea',item&&item.description||'');
+    appendFormRow(body,'Important advice','f-advice','textarea',item&&item.advice||'');
+    appendFormRow(body,'Additional Info link (optional)','f-info-link','input',item&&item.infoLink||'');
+
+    // PDF upload
+    const pdfRow=el('div','form-row');
+    pdfRow.innerHTML='<label>PDF (trail map, guide…)</label>';
+    const pdfInner=el('div'); pdfInner.style.cssText='display:flex;align-items:center;gap:10px;margin-top:4px';
+    const pdfInput=document.createElement('input'); pdfInput.type='file'; pdfInput.accept='.pdf'; pdfInput.id='f-pdf-input'; pdfInput.style.display='none';
+    if(item&&item.pdfData){
+      const existBtn=el('button','pdf-btn'); existBtn.type='button'; existBtn.textContent='📄 View current PDF';
+      existBtn.onclick=()=>{ const a=document.createElement('a'); a.href=item.pdfData; a.download='trail.pdf'; a.click(); };
+      pdfInner.appendChild(existBtn);
+    }
+    const pdfPickBtn=el('button','poster-url-btn'); pdfPickBtn.type='button'; pdfPickBtn.textContent=item&&item.pdfData?'Replace PDF':'+ Attach PDF';
+    pdfPickBtn.onclick=()=>pdfInput.click();
+    pdfInput.onchange=()=>{
+      const file=pdfInput.files[0]; if(!file) return;
+      if(file.size>5*1024*1024){ alert('PDF too large (max 5 MB). Consider linking instead.'); return; }
+      const reader=new FileReader();
+      reader.onload=ev=>{ pdfInput.dataset.b64=ev.target.result; pdfPickBtn.textContent='✓ '+file.name; };
+      reader.readAsDataURL(file);
+    };
+    pdfInner.appendChild(pdfPickBtn); pdfInner.appendChild(pdfInput);
+    pdfRow.appendChild(pdfInner); body.appendChild(pdfRow);
+  }
+
+  // International trips fields
+  if(c.id==='intl-trips'){
+    // Smart fill header
+    const itDesc=el('div','form-row');
+    itDesc.innerHTML=`<label>Trip description</label><textarea class="form-textarea" id="f-trip-desc" placeholder="e.g. South of France, visit Provence, with two kids, around 10-12 days" rows="2">${esc(item&&item.tripDesc||'')}</textarea>`;
+    body.appendChild(itDesc);
+
+    // Smart fill button + status
+    const itSb=el('button','smart-btn'); itSb.type='button'; itSb.style.marginTop='4px';
+    itSb.innerHTML='🌍 Smart Fill from description';
+    itSb.onclick=fetchIntlTripInfo;
+    body.appendChild(itSb);
+    const itSt=el('div','smart-status'); itSt.id='itSmartStatus'; body.appendChild(itSt);
+
+    // Claude API key prompt
+    // Claude key prompt only if no built-in or stored key
+    if(!CLAUDE_KEY_DEFAULT&&!localStorage.getItem('claude_key')){
+      const ckw=el('div'); ckw.id='claudeKeyWrap';
+      ckw.innerHTML=`<div class="form-row" style="margin-top:-4px"><label style="color:var(--muted);font-size:.78rem">Anthropic API key needed for Smart Fill</label><div style="display:flex;gap:8px"><input class="form-input" id="claudeKeyInput" placeholder="sk-ant-…" style="flex:1"/><button class="poster-url-btn" type="button" onclick="saveClaudeKey()">Save key</button></div></div>`;
+      body.appendChild(ckw);
+    }
+
+    // Editable auto-filled fields
+    appendFormRow(body,'Best time of year','f-best-time','input',item&&item.bestTime||'');
+    appendFormRow(body,'Trip duration','f-trip-duration','input',item&&item.tripDuration||'');
+
+    // Must-see destinations (textarea)
+    const msRow=el('div','form-row');
+    msRow.innerHTML=`<label>Must-see destinations</label><textarea class="form-textarea" id="f-must-see" rows="3" placeholder="e.g. Gorges du Verdon, Les Baux-de-Provence, Avignon…">${esc(item&&item.mustSee||'')}</textarea>`;
+    body.appendChild(msRow);
+
+    appendFormRow(body,'Weather','f-weather','input',item&&item.weather||'');
+    appendFormRow(body,'Notes','f-notes','textarea',item&&item.notes||'');
+  }
+
+  // Stuff: mode toggle + product fetch
+  if(c.id==='stuff'){
+    // Mode toggle
+    const modeRow=el('div','form-row');
+    const modeVal=item&&item.mode||'to-buy';
+    modeRow.innerHTML=`<label>Type</label><div class="mode-toggle-wrap">
+      <button type="button" class="mode-btn${modeVal==='to-buy'?' active':''}" id="mode-to-buy" onclick="setStuffMode('to-buy')">🛒 To Buy</button>
+      <button type="button" class="mode-btn${modeVal==='to-research'?' active':''}" id="mode-to-research" onclick="setStuffMode('to-research')">🔍 To Research</button>
+    </div><input type="hidden" id="f-stuff-mode" value="${modeVal}"/>`;
+    body.appendChild(modeRow);
+
+    // TO BUY panel
+    const buyPanel=el('div'); buyPanel.id='stuff-buy-panel'; buyPanel.style.display=modeVal==='to-buy'?'':'none';
+    // URL fetch row
+    const urlRow=el('div','form-row');
+    urlRow.innerHTML=`<label>Product URL</label><div style="display:flex;gap:8px"><input class="form-input" id="f-product-url" value="${esc(item&&item.productUrl||'')}" placeholder="Paste product link…" style="flex:1"/><button class="smart-btn" type="button" id="stuffFetchBtn" style="margin:0;width:auto;padding:8px 14px;white-space:nowrap">🔍 Fetch</button></div>`;
+    buyPanel.appendChild(urlRow);
+    const fetchSt=el('div','smart-status'); fetchSt.id='stuffFetchStatus'; buyPanel.appendChild(fetchSt);
+    appendFormRow(buyPanel,'Price','f-price','input',item&&item.price||'');
+    const prosRow=el('div','form-row');
+    prosRow.innerHTML=`<label>Pros</label><textarea class="form-textarea" id="f-pros" rows="2" placeholder="What's good about it…">${esc(item&&item.pros||'')}</textarea>`;
+    buyPanel.appendChild(prosRow);
+    const consRow=el('div','form-row');
+    consRow.innerHTML=`<label>Cons</label><textarea class="form-textarea" id="f-cons" rows="2" placeholder="Downsides, concerns…">${esc(item&&item.cons||'')}</textarea>`;
+    buyPanel.appendChild(consRow);
+    body.appendChild(buyPanel);
+    setTimeout(()=>{
+      const btn=document.getElementById('stuffFetchBtn');
+      if(btn) btn.onclick=stuffFetchProduct;
+    },0);
+
+    // TO RESEARCH panel
+    const resPanel=el('div'); resPanel.id='stuff-research-panel'; resPanel.style.display=modeVal==='to-research'?'':'none';
+    const topicRow=el('div','form-row');
+    topicRow.innerHTML=`<label>What to research</label><input class="form-input" id="f-research-topic" value="${esc(item&&item.researchTopic||item&&item.title||'')}" placeholder="e.g. Coffee machine, Running shoes…"/>`;
+    resPanel.appendChild(topicRow);
+    // Options list
+    const optHead=el('div','form-row');
+    optHead.innerHTML=`<label>Options <span style="color:var(--muted);font-weight:400;font-size:.8rem">(add products to compare)</span></label>`;
+    resPanel.appendChild(optHead);
+    const optList=el('div'); optList.id='research-options-list';
+    resPanel.appendChild(optList);
+    // Add option row
+    const addOptRow=el('div'); addOptRow.style.cssText='display:flex;gap:8px;margin-bottom:12px';
+    addOptRow.innerHTML=`<input class="form-input" id="f-new-option-url" placeholder="Paste option URL…" style="flex:1"/><button class="smart-btn" type="button" id="addOptionBtn" style="margin:0;width:auto;padding:8px 14px;white-space:nowrap">+ Add</button>`;
+    resPanel.appendChild(addOptRow);
+    const addOptSt=el('div','smart-status'); addOptSt.id='addOptStatus'; resPanel.appendChild(addOptSt);
+    body.appendChild(resPanel);
+
+    // Init research options display
+    window._researchOptions = (item&&item.options) ? JSON.parse(JSON.stringify(item.options)) : [];
+    setTimeout(()=>{ renderResearchOptions(); const b=document.getElementById('addOptionBtn'); if(b) b.onclick=addResearchOption; },0);
+
+    // Shared notes
+    const notesRow=el('div','form-row');
+    notesRow.innerHTML=`<label>Notes</label><textarea class="form-textarea" id="f-notes" rows="2">${esc(item&&item.notes||'')}</textarea>`;
+    body.appendChild(notesRow);
+  }
+
+  // Generic notes (not movies/tv/books/restaurants/local-trips/intl-trips/stuff)
+  if(c.id!=='movies'&&c.id!=='tv-shows'&&c.id!=='books'&&c.id!=='restaurants'&&c.id!=='local-trips'&&c.id!=='intl-trips'&&c.id!=='stuff'){
     appendFormRow(body,'Notes','f-notes','textarea',item&&(item.notes||item.description||item.reasons)||'');
   }
 
@@ -1261,24 +1574,30 @@ function buildForm(body, c, item){
   // Show rating/aspects when editing a done item OR adding new while on Past tab
   const isExistingDone = item && item.status === 'done';
   const isDoneContext = isExistingDone || (!item && tab === 'done');
+  if(c.id!=='stuff'){
   if(isDoneContext){
     body.appendChild(buildStarPicker('f-star-rating','Rating — how was it?', item&&item.rating||0));
-    const _aspects = ['Storyline & writing','Direction','Acting','Thrill & excitement','Authenticity & emotion','Style & cinematography'];
-    const _cur = (item&&item.likedAspects)||[];
-    const _ar = el('div','form-row');
-    const _al = document.createElement('label'); _al.textContent='What stood out?'; _ar.appendChild(_al);
-    const _aw = el('div','jdi-aspects-wrap'); _aw.id='f-aspects-wrap';
-    _aspects.forEach(a => {
-      const pill = el('button','jdi-aspect'+(_cur.includes(a)?' on':''));
-      pill.type='button'; pill.textContent=a;
-      pill.onclick = () => pill.classList.toggle('on');
-      _aw.appendChild(pill);
-    });
-    _ar.appendChild(_aw); body.appendChild(_ar);
+    if(c.id!=='local-trips'){
+      const _aspects = c.id==='restaurants'
+        ? ['Atmosphere','Food','Service','Setting']
+        : ['Storyline & writing','Direction','Acting','Thrill & excitement','Authenticity & emotion','Style & cinematography'];
+      const _cur = (item&&item.likedAspects)||[];
+      const _ar = el('div','form-row');
+      const _al = document.createElement('label'); _al.textContent='What stood out?'; _ar.appendChild(_al);
+      const _aw = el('div','jdi-aspects-wrap'); _aw.id='f-aspects-wrap';
+      _aspects.forEach(a => {
+        const pill = el('button','jdi-aspect'+(_cur.includes(a)?' on':''));
+        pill.type='button'; pill.textContent=a;
+        pill.onclick = () => pill.classList.toggle('on');
+        _aw.appendChild(pill);
+      });
+      _ar.appendChild(_aw); body.appendChild(_ar);
+    }
     appendFormRow(body,'My review (optional)','f-review','textarea',item&&item.review||'');
   } else {
     body.appendChild(buildStarPicker('f-match','Match — how interested are you?', item&&item.match||0));
   }
+  } // end if(c.id!=='stuff')
 
 
   // Source of recommendation
@@ -1338,6 +1657,11 @@ function buildSourceField(body, c, sourceVal){
       if(inp){ inp.focus(); }
     }
   });
+}
+
+function toggleNatureFields(type){
+  const nf=document.getElementById('natureFields');
+  if(nf) nf.style.display=type==='Nature'?'':'none';
 }
 
 // ─── Poster section ───────────────────────────────────────────────────────────
@@ -1475,7 +1799,47 @@ function saveItem(){
     obj.priceRange = v('f-price');
     obj.notes      = v('f-notes');
   }
-  if(c.id!=='movies'&&c.id!=='tv-shows'&&c.id!=='books'&&c.id!=='restaurants'){
+  if(c.id==='local-trips'){
+    obj.mapsLink    = v('f-maps');
+    obj.tripType    = v('f-trip-type');
+    obj.region      = v('f-region');
+    obj.commute     = v('f-commute');
+    obj.trailHours  = v('f-trail-hours');
+    const waterEl   = document.querySelector('input[name="f-water"]:checked');
+    obj.hasWater    = waterEl ? waterEl.value==='yes' : null;
+    obj.bestSeason  = v('f-best-season');
+    obj.notForKids  = document.getElementById('f-not-kids')?.checked||false;
+    obj.description = v('f-description');
+    obj.advice      = v('f-advice');
+    obj.infoLink    = v('f-info-link');
+    const pdfInp    = document.getElementById('f-pdf-input');
+    if(pdfInp&&pdfInp.dataset.b64) obj.pdfData = pdfInp.dataset.b64;
+    else if(existing) obj.pdfData = existing.pdfData||null;
+  }
+  if(c.id==='intl-trips'){
+    obj.tripDesc     = v('f-trip-desc');
+    obj.bestTime     = v('f-best-time');
+    obj.tripDuration = v('f-trip-duration');
+    obj.mustSee      = v('f-must-see');
+    obj.weather      = v('f-weather');
+    obj.notes        = v('f-notes');
+  }
+  if(c.id==='stuff'){
+    obj.mode    = v('f-stuff-mode')||'to-buy';
+    obj.notes   = v('f-notes');
+    if(obj.mode==='to-buy'){
+      obj.productUrl = v('f-product-url');
+      obj.price      = v('f-price');
+      obj.pros       = v('f-pros');
+      obj.cons       = v('f-cons');
+    } else {
+      obj.researchTopic = v('f-research-topic')||v('f-title');
+      obj.options       = window._researchOptions||[];
+      // Keep title in sync with topic
+      if(!obj.title&&obj.researchTopic) obj.title=obj.researchTopic;
+    }
+  }
+  if(c.id!=='movies'&&c.id!=='tv-shows'&&c.id!=='books'&&c.id!=='restaurants'&&c.id!=='local-trips'&&c.id!=='intl-trips'&&c.id!=='stuff'){
     obj.notes = v('f-notes');
   }
 
@@ -1585,6 +1949,308 @@ async function fetchFromMaps(){
 
     setMapsStatus('✓ Done! Review and adjust the fields below.');
   } catch(e){ setMapsStatus('Error: '+e.message); }
+}
+
+window.saveClaudeKey = function(){
+  const k=(document.getElementById('claudeKeyInput')||{}).value||'';
+  if(!k) return;
+  localStorage.setItem('claude_key',k);
+  const w=document.getElementById('claudeKeyWrap'); if(w) w.remove();
+  document.getElementById('itSmartStatus').textContent='API key saved — click Smart Fill.';
+};
+
+async function fetchIntlTripInfo(){
+  const desc=(document.getElementById('f-trip-desc')||{}).value||'';
+  if(!desc){ document.getElementById('itSmartStatus').textContent='Enter a trip description first.'; return; }
+  const claudeKey=localStorage.getItem('claude_key')||CLAUDE_KEY_DEFAULT;
+
+  document.getElementById('itSmartStatus').textContent='Thinking…';
+  try{
+    // Resolve which model to use — fetch the list and pick the cheapest/fastest available
+    let modelId='claude-3-haiku-20240307';
+    try{
+      const mRes=await fetch('https://api.anthropic.com/v1/models',{
+        headers:{'x-api-key':claudeKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}
+      });
+      if(mRes.ok){
+        const mData=await mRes.json();
+        const ids=(mData.data||[]).map(m=>m.id);
+        // Prefer haiku (cheapest/fastest), then sonnet, then anything
+        const haiku=ids.find(id=>id.toLowerCase().includes('haiku'));
+        const sonnet=ids.find(id=>id.toLowerCase().includes('sonnet'));
+        modelId=haiku||sonnet||ids[0]||modelId;
+      }
+    }catch(_){}
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':claudeKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({
+        model:modelId,
+        max_tokens:800,
+        messages:[{role:'user',content:`For this trip destination: "${desc}"\n\nYou must respond with ONLY a valid JSON object. No prose, no markdown, no code blocks. Just the raw JSON.\n\nRequired JSON keys:\n- "bestTime": string, best months/season to visit\n- "tripDuration": string, recommended trip length (e.g. "7-10 days")\n- "mustSee": string, top 3-5 must-see places separated by newlines\n- "weather": string, brief weather description\n- "locationQuery": string, main destination name in English for image search\n\nExample format:\n{"bestTime":"April to June","tripDuration":"7-10 days","mustSee":"Eiffel Tower\\nLouvre Museum\\nVersailles","weather":"Mild, 15-25°C in summer","locationQuery":"Paris France"}`}]
+      })
+    });
+    if(!res.ok){
+      const errText=await res.text();
+      document.getElementById('itSmartStatus').textContent=`HTTP ${res.status}: ${errText.slice(0,150)}`;
+      return;
+    }
+    const data=await res.json();
+    if(data.type==='error'||data.error){ document.getElementById('itSmartStatus').textContent='API error: '+(data.error?.message||JSON.stringify(data.error)); return; }
+    if(!data.content||!data.content[0]){ document.getElementById('itSmartStatus').textContent='Empty response (type='+data.type+').'; return; }
+    let info;
+    const rawText=data.content[0].text||'';
+    try{
+      // Try direct parse first, then strip markdown fences, then extract JSON block
+      let cleaned=rawText.trim();
+      if(cleaned.startsWith('```')){
+        cleaned=cleaned.replace(/^```[a-z]*\n?/i,'').replace(/```\s*$/,'').trim();
+      }
+      // Try to extract a JSON object anywhere in the text
+      if(!cleaned.startsWith('{')){
+        const m=rawText.match(/\{[\s\S]*\}/);
+        if(m) cleaned=m[0];
+      }
+      info=JSON.parse(cleaned);
+    }catch(_){
+      document.getElementById('itSmartStatus').textContent='Parse error — raw: '+rawText.slice(0,200);
+      return;
+    }
+
+    if(info.bestTime)     setField('f-best-time',info.bestTime);
+    if(info.tripDuration) setField('f-trip-duration',info.tripDuration);
+    if(info.mustSee)      { const el=document.getElementById('f-must-see'); if(el) el.value=info.mustSee; }
+    if(info.weather)      setField('f-weather',info.weather);
+
+    // Auto-fill title from location if blank
+    if(info.locationQuery&&!v('f-title')) setField('f-title',info.locationQuery);
+
+    // Fetch cover image via Google Places
+    const placesKey=localStorage.getItem('places_key');
+    if(placesKey&&info.locationQuery){
+      document.getElementById('itSmartStatus').textContent='Fetching cover image…';
+      try{
+        const pr=await fetch('https://places.googleapis.com/v1/places:searchText',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','X-Goog-Api-Key':placesKey,
+            'X-Goog-FieldMask':'places.photos'},
+          body:JSON.stringify({textQuery:info.locationQuery,languageCode:'en'})
+        });
+        const pd=await pr.json();
+        const photo=((pd.places||[])[0]||{}).photos;
+        if(photo&&photo.length){
+          const pmr=await fetch(`https://places.googleapis.com/v1/${photo[0].name}/media?maxWidthPx=800&skipHttpRedirect=true&key=${placesKey}`);
+          const pmd=await pmr.json();
+          if(pmd.photoUri) setFormPoster(pmd.photoUri);
+        }
+      }catch(_){}
+    }
+    document.getElementById('itSmartStatus').textContent='✓ Done! All fields are editable.';
+  }catch(e){ document.getElementById('itSmartStatus').textContent='Error: '+e.message; }
+}
+
+async function fetchProductInfo(url){
+  // 1️⃣ Try Microlink — headless-browser extraction, no API key needed
+  try{
+    const mlRes=await fetch('https://api.microlink.io/?url='+encodeURIComponent(url)+'&palette=false&audio=false&video=false&iframe=false');
+    if(mlRes.ok){
+      const ml=await mlRes.json();
+      if(ml.status==='success'&&ml.data){
+        const d=ml.data;
+        const title=(d.title||'').slice(0,120).trim();
+        const image=d.image?.url||d.screenshot?.url||'';
+        const desc=(d.description||'').slice(0,400).trim();
+        const price=d.price||'';
+        if(title||image) return {title,image,desc,price};
+      }
+    }
+  }catch(_){}
+
+  // 2️⃣ Fallback: JSONLink open-graph extractor
+  try{
+    const jlRes=await fetch('https://jsonlink.io/api/extract?url='+encodeURIComponent(url));
+    if(jlRes.ok){
+      const jl=await jlRes.json();
+      const title=(jl.title||'').slice(0,120).trim();
+      const image=(jl.images&&jl.images[0])||'';
+      const desc=(jl.description||'').slice(0,400).trim();
+      if(title||image) return {title,image,desc,price:''};
+    }
+  }catch(_){}
+
+  return null;
+}
+
+window.setStuffMode=function(mode){
+  document.getElementById('f-stuff-mode').value=mode;
+  document.getElementById('stuff-buy-panel').style.display=mode==='to-buy'?'':'none';
+  document.getElementById('stuff-research-panel').style.display=mode==='to-research'?'':'none';
+  document.getElementById('mode-to-buy').classList.toggle('active',mode==='to-buy');
+  document.getElementById('mode-to-research').classList.toggle('active',mode==='to-research');
+  // Sync title display
+  const titleEl=document.getElementById('f-title');
+  if(mode==='to-research'){
+    const topic=document.getElementById('f-research-topic');
+    if(topic&&!titleEl.value) titleEl.value=topic.value;
+  }
+};
+
+async function stuffFetchProduct(){
+  const url=(document.getElementById('f-product-url')||{}).value||'';
+  if(!url){ document.getElementById('stuffFetchStatus').textContent='Paste a URL first.'; return; }
+  document.getElementById('stuffFetchStatus').textContent='Fetching…';
+  const info=await fetchProductInfo(url);
+  if(!info){ document.getElementById('stuffFetchStatus').textContent='Could not fetch — try entering details manually.'; return; }
+  if(info.title&&!document.getElementById('f-title').value) setField('f-title',info.title);
+  if(info.price) setField('f-price',info.price);
+  if(info.desc){
+    const pros=document.getElementById('f-pros');
+    if(pros&&!pros.value) pros.value=info.desc;
+  }
+  if(info.image) setFormPoster(info.image);
+  document.getElementById('stuffFetchStatus').textContent='✓ Done — review and edit fields.';
+}
+
+window.removeResearchOption=function(idx){
+  window._researchOptions.splice(idx,1);
+  renderResearchOptions();
+};
+
+window.pickResearchOption=function(idx){
+  const opt=window._researchOptions[idx];
+  if(!opt) return;
+  // Switch to To Buy mode and fill fields
+  setStuffMode('to-buy');
+  setField('f-title',opt.name||opt.title||'');
+  setField('f-product-url',opt.url||'');
+  setField('f-price',opt.price||'');
+  const pros=document.getElementById('f-pros'); if(pros) pros.value=opt.pros||opt.desc||'';
+  if(opt.image) setFormPoster(opt.image);
+  document.getElementById('stuffFetchStatus').textContent='Picked from research — review and save.';
+};
+
+function renderResearchOptions(){
+  const wrap=document.getElementById('research-options-list');
+  if(!wrap) return;
+  wrap.innerHTML='';
+  (window._researchOptions||[]).forEach((opt,i)=>{
+    const card=el('div','research-option-card');
+    card.innerHTML=`
+      ${opt.image?`<img src="${esc(opt.image)}" class="research-opt-img" onerror="this.style.display='none'"/>`:''}
+      <div class="research-opt-body">
+        <div class="research-opt-name">${esc(opt.name||opt.title||opt.url||'Option '+(i+1))}</div>
+        ${opt.price?`<div class="research-opt-price">${esc(opt.price)}</div>`:''}
+        ${opt.pros||opt.desc?`<div class="research-opt-desc">${esc((opt.pros||opt.desc).slice(0,120))}${(opt.pros||opt.desc).length>120?'…':''}</div>`:''}
+        <div class="research-opt-actions">
+          <button type="button" class="mode-btn active" onclick="pickResearchOption(${i})" style="padding:4px 10px;font-size:.75rem">✓ Pick this</button>
+          <button type="button" class="mode-btn" onclick="removeResearchOption(${i})" style="padding:4px 10px;font-size:.75rem;color:#f87171">✕ Remove</button>
+        </div>
+      </div>`;
+    wrap.appendChild(card);
+  });
+}
+
+async function addResearchOption(){
+  const urlEl=document.getElementById('f-new-option-url');
+  const url=(urlEl||{}).value||'';
+  if(!url){ document.getElementById('addOptStatus').textContent='Paste a product URL first.'; return; }
+  document.getElementById('addOptStatus').textContent='Fetching…';
+  const info=await fetchProductInfo(url);
+  const opt={
+    url,
+    name:(info&&info.title)||url,
+    image:info&&info.image||'',
+    price:info&&info.price||'',
+    pros:'',
+    desc:info&&info.desc||'',
+  };
+  window._researchOptions.push(opt);
+  renderResearchOptions();
+  if(urlEl) urlEl.value='';
+  document.getElementById('addOptStatus').textContent=info?'✓ Added — paste next URL or save.':'Added (details not fetched — site may block bots).';
+}
+
+async function fetchFromMapsLocalTrip(){
+  const urlEl=document.getElementById('f-maps');
+  const url=urlEl?urlEl.value.trim():'';
+  if(!url){ document.getElementById('ltMapsStatus').textContent='Paste a Google Maps link first.'; return; }
+  const key=localStorage.getItem('places_key');
+  if(!key){ document.getElementById('ltMapsStatus').textContent='Save a Google Places API key first.'; return; }
+  const nameMatch=url.match(/\/maps\/place\/([^/@?#]+)/);
+  const query=nameMatch?decodeURIComponent(nameMatch[1].replace(/\+/g,' ')):'';
+  if(!query){ document.getElementById('ltMapsStatus').textContent='Could not read place name from URL.'; return; }
+  document.getElementById('ltMapsStatus').textContent='Searching…';
+  try{
+    const res=await fetch('https://places.googleapis.com/v1/places:searchText',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Goog-Api-Key':key,
+        'X-Goog-FieldMask':'places.displayName,places.addressComponents,places.photos,places.location'},
+      body:JSON.stringify({textQuery:query,languageCode:'en'})
+    });
+    const data=await res.json();
+    if(data.error){ document.getElementById('ltMapsStatus').textContent='API error: '+data.error.message; return; }
+    const place=(data.places||[])[0];
+    if(!place){ document.getElementById('ltMapsStatus').textContent='No results found.'; return; }
+    if(place.displayName) setField('f-title',place.displayName.text);
+    let region='';
+    (place.addressComponents||[]).forEach(comp=>{
+      if(comp.types.includes('administrative_area_level_1')) region=comp.longText;
+    });
+    if(region) setField('f-region',region);
+    // Store location for commute calc
+    if(place.location) window._ltPlaceLocation=place.location;
+    // Cover photo
+    if(place.photos&&place.photos.length){
+      document.getElementById('ltMapsStatus').textContent='Fetching image…';
+      try{
+        const pr=await fetch(`https://places.googleapis.com/v1/${place.photos[0].name}/media?maxWidthPx=800&skipHttpRedirect=true&key=${key}`);
+        const pd=await pr.json();
+        if(pd.photoUri) setFormPoster(pd.photoUri);
+      }catch(_){}
+    }
+    document.getElementById('ltMapsStatus').textContent='✓ Done! Adjust fields below, then click 🧭 Calculate for commute.';
+  }catch(e){ document.getElementById('ltMapsStatus').textContent='Error: '+e.message; }
+}
+
+async function calcCommute(){
+  const key=localStorage.getItem('routes_key')||ROUTES_KEY_DEFAULT;
+  let home=localStorage.getItem('home_address');
+  if(!home){
+    home=prompt('Enter your home address (stored locally):');
+    if(!home) return;
+    localStorage.setItem('home_address',home);
+  }
+  const dest=window._ltPlaceLocation;
+  const mapsUrl=(document.getElementById('f-maps')||{}).value||'';
+  if(!dest&&!mapsUrl){ document.getElementById('commuteSt').textContent='Fetch place data first.'; return; }
+  document.getElementById('commuteSt').textContent='Calculating…';
+  try{
+    const destination=dest
+      ? {location:{latLng:{latitude:dest.latitude,longitude:dest.longitude}}}
+      : {address:(document.getElementById('f-title')||{}).value||mapsUrl};
+    const res=await fetch('https://routes.googleapis.com/directions/v2:computeRoutes',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Goog-Api-Key':key,
+        'X-Goog-FieldMask':'routes.duration,routes.distanceMeters'},
+      body:JSON.stringify({origin:{address:home},destination,travelMode:'DRIVE',routingPreference:'TRAFFIC_UNAWARE'})
+    });
+    const data=await res.json();
+    if(data.error){ document.getElementById('commuteSt').textContent='Routes API error — enable it in Google Cloud Console.'; return; }
+    const route=(data.routes||[])[0];
+    if(!route){ document.getElementById('commuteSt').textContent='No route found.'; return; }
+    const secs=parseInt(route.duration)||0;
+    const km=Math.round((route.distanceMeters||0)/1000);
+    const h=Math.floor(secs/3600), m=Math.round((secs%3600)/60);
+    const dur=h>0?`${h}h ${m}min`:`${m}min`;
+    const result=`${dur} (${km} km)`;
+    setField('f-commute',result);
+    document.getElementById('commuteSt').textContent='✓ '+result;
+  }catch(e){ document.getElementById('commuteSt').textContent='Error: '+e.message; }
 }
 
 function saveOmdbKey(){
@@ -1779,6 +2445,18 @@ function overlayClick(e){
   // do not close on outside click — only explicit Cancel/X closes the sheet
 }
 
+// ─── Keyboard shortcuts ───────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if((e.metaKey||e.ctrlKey) && e.key==='Enter'){
+    const overlay = document.getElementById('sheetOverlay');
+    if(!overlay || !overlay.classList.contains('open')) return;
+    e.preventDefault();
+    // find and click the primary save/action button
+    const saveBtn = document.querySelector('#sheetActions .sheet-save');
+    if(saveBtn) saveBtn.click();
+  }
+});
+
 // ─── CSV Export ───────────────────────────────────────────────────────────────
 function exportCSV(){
   const cols = [
@@ -1826,8 +2504,45 @@ function exportCSV(){
   URL.revokeObjectURL(url);
 }
 
+// ─── Auto Backup (every 24 hours) ────────────────────────────────────────────
+function autoBackup(){
+  const INTERVAL = 24 * 60 * 60 * 1000;
+  const last = parseInt(localStorage.getItem('wl_last_backup') || '0');
+  if(Date.now() - last < INTERVAL) return;
+  const cols = [
+    'Category','Title','Status','Year','Source','Rating','Match',
+    'Director','Author','Cuisine','City','Country','Price Range',
+    'Visit Date','Done Date','Liked Aspects','Favourite Dishes',
+    'Review','Notes','Genres','Poster'
+  ];
+  const priceLabels={budget:'Up to $30',mid:'$30–$75',upscale:'$75–$150',fine:'Above $150'};
+  const rows = items.map(item => {
+    const c = getCat(item.cat);
+    return [
+      c.label, item.title||'', item.status||'', item.year||'',
+      (item.source&&item.source!=='N/A') ? item.source : '',
+      item.rating||'', item.match||'', item.director||'', item.author||'',
+      item.cuisine||'', item.city||'', item.country||'',
+      item.priceRange ? (priceLabels[item.priceRange]||item.priceRange) : '',
+      item.visitDate||'', item.doneDate||'',
+      (item.likedAspects||[]).join('; '), (item.favDishes||[]).join('; '),
+      item.review||'', item.notes||'', (item.genres||[]).join('; '), item.poster||''
+    ].map(val => `"${String(val).replace(/"/g,'""')}"`);
+  });
+  const csv = [cols.map(c=>`"${c}"`).join(','), ...rows.map(r=>r.join(','))].join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `wishlist-backup-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  localStorage.setItem('wl_last_backup', Date.now().toString());
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 renderContent();
+autoBackup();
 </script>
 </body>
 </html>

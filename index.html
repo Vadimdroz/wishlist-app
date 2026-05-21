@@ -2188,15 +2188,29 @@ async function stuffFetchProduct(){
   const isShopify=/\/products\/[^?#]+/.test(url);
   document.getElementById('stuffFetchStatus').textContent=isShopify?'Fetching from Shopify…':'Fetching…';
   const info=await fetchProductInfo(url);
-  if(!info){ document.getElementById('stuffFetchStatus').textContent='Could not fetch — the site may block all bots. Fill in title and image manually.'; return; }
-  if(info.title&&!document.getElementById('f-title').value) setField('f-title',info.title);
-  if(info.price) setField('f-price',info.price);
-  if(info.desc){
-    const pros=document.getElementById('f-pros');
-    if(pros&&!pros.value) pros.value=info.desc;
+
+  const title=(info&&info.title)||'';
+  const price=(info&&info.price)||'';
+  const desc=(info&&info.desc)||'';
+  let image=(info&&info.image)||'';
+
+  if(title&&!document.getElementById('f-title').value) setField('f-title',title);
+  if(price) setField('f-price',price);
+  if(desc){ const pros=document.getElementById('f-pros'); if(pros&&!pros.value) pros.value=desc; }
+
+  if(image){
+    setFormPoster(image);
+    document.getElementById('stuffFetchStatus').textContent='✓ Done — review and edit fields.';
+  } else if(title){
+    // No image found — generate one with Pollinations.ai
+    document.getElementById('stuffFetchStatus').textContent='No image found — generating one…';
+    const prompt=encodeURIComponent('product photo of '+title+', clean white background, studio lighting, high quality');
+    image=`https://image.pollinations.ai/prompt/${prompt}?width=400&height=400&nologo=true&seed=${Date.now()}`;
+    setFormPoster(image);
+    document.getElementById('stuffFetchStatus').textContent='✓ Done — AI-generated image used (swap it if you have a better one).';
+  } else {
+    document.getElementById('stuffFetchStatus').textContent='Could not fetch — fill in title and the image will be generated automatically.';
   }
-  if(info.image) setFormPoster(info.image);
-  document.getElementById('stuffFetchStatus').textContent='✓ Done — review and edit fields.';
 }
 
 window.removeResearchOption=function(idx){

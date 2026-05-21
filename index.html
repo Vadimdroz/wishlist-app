@@ -198,6 +198,14 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .poster-preview img{width:90px;aspect-ratio:2/3;object-fit:cover;border-radius:8px;display:block}
 .poster-remove{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#ef4444;color:#fff;font-size:.8rem;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;line-height:1}
 
+/* STUFF TYPE TOGGLE */
+.stuff-type-row{display:flex;gap:8px;margin-bottom:14px}
+.stuff-type-btn{flex:1;padding:8px 12px;border-radius:20px;font-size:.82rem;font-weight:600;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;transition:.15s;text-align:center}
+.stuff-type-btn.on{background:rgba(236,72,153,.18);color:#f9a8d4;border-color:rgba(236,72,153,.4)}
+.stuff-fetch-btn{padding:8px 14px;border-radius:8px;background:rgba(99,102,241,.15);color:#a5b4fc;border:1px solid rgba(99,102,241,.3);font-size:.82rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:.15s}
+.stuff-fetch-btn:hover{background:rgba(99,102,241,.25)}
+.stuff-img-preview{width:60px;height:60px;object-fit:cover;border-radius:8px;display:block;margin-top:6px}
+
 /* CHECKBOX ROW */
 .check-row{display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap}
 .check-item{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.85rem}
@@ -591,8 +599,8 @@ function buildItemCard(item, c){
 
   const inner = el('div','item-card-inner');
 
-  // Poster for movies, tv-shows, books, restaurants
-  if(c.id==='movies'||c.id==='tv-shows'||c.id==='books'||c.id==='restaurants'){
+  // Poster for movies, tv-shows, books, restaurants, stuff
+  if(c.id==='movies'||c.id==='tv-shows'||c.id==='books'||c.id==='restaurants'||c.id==='stuff'){
     if(item.poster && item.poster!=='N/A'){
       const img = document.createElement('img');
       img.className = 'item-card-poster';
@@ -733,6 +741,33 @@ function buildItemCard(item, c){
     }
     if(isFuture){
       const jdi=el('button','jdi-btn'); jdi.textContent='✓ Just Did It!';
+      jdi.onclick=e=>{e.stopPropagation();markDone(item.id);}; bottom.appendChild(jdi);
+    } else if(item.doneDate){
+      const done=el('span','jdi-done-tag');
+      done.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> ${esc(item.doneDate)}`;
+      bottom.appendChild(done);
+    }
+    body.appendChild(bottom);
+  } else if(c.id==='stuff'){
+    // Stuff: type badge + price, then pros snippet, then source/link/JDI
+    const metaRow = el('div','item-card-meta'); metaRow.style.marginTop='4px';
+    if(item.stuffType==='research') metaRow.insertAdjacentHTML('beforeend','<span class="badge badge-year">🔍 Research</span>');
+    else metaRow.insertAdjacentHTML('beforeend','<span class="badge badge-year">🛒 Buy</span>');
+    if(item.price) metaRow.insertAdjacentHTML('beforeend',`<span class="badge badge-year">${esc(item.price)}</span>`);
+    body.appendChild(metaRow);
+    if(item.pros){
+      const n = el('div','item-card-notes'); n.textContent = item.pros; body.appendChild(n);
+    }
+    const bottom = el('div','item-card-bottom');
+    if(hasSource){ const st=el('span','source-tag'); st.textContent='via '+item.source; bottom.appendChild(st); }
+    if(item.productUrl){
+      const pl = document.createElement('a');
+      pl.className='kindle-link'; pl.href=item.productUrl; pl.target='_blank'; pl.rel='noopener';
+      pl.onclick=e=>e.stopPropagation(); pl.innerHTML='🔗 Link';
+      bottom.appendChild(pl);
+    }
+    if(isFuture){
+      const jdi=el('button','jdi-btn'); jdi.textContent='✓ Got It!';
       jdi.onclick=e=>{e.stopPropagation();markDone(item.id);}; bottom.appendChild(jdi);
     } else if(item.doneDate){
       const done=el('span','jdi-done-tag');
@@ -1163,6 +1198,39 @@ function buildForm(body, c, item){
     setTimeout(()=>{ const b=document.getElementById('mapsSmartBtn'); if(b) b.onclick=fetchFromMaps; },0);
   }
 
+  // Stuff (shopping) fields — type toggle, product URL fetch, price, pros
+  if(c.id==='stuff'){
+    // Type toggle
+    const typeRow = el('div','stuff-type-row');
+    const curType = (item&&item.stuffType)||'buy';
+    const btnBuy = el('button','stuff-type-btn'+(curType==='buy'?' on':'')); btnBuy.type='button'; btnBuy.innerHTML='🛒 To Buy'; btnBuy.dataset.t='buy';
+    const btnRes = el('button','stuff-type-btn'+(curType==='research'?' on':'')); btnRes.type='button'; btnRes.innerHTML='🔍 To Research'; btnRes.dataset.t='research';
+    function setStuffType(t){
+      btnBuy.classList.toggle('on',t==='buy');
+      btnRes.classList.toggle('on',t==='research');
+      const priceRow = document.getElementById('stuff-price-row');
+      if(priceRow) priceRow.style.display = t==='buy' ? '' : 'none';
+    }
+    btnBuy.onclick = () => setStuffType('buy');
+    btnRes.onclick = () => setStuffType('research');
+    typeRow.appendChild(btnBuy); typeRow.appendChild(btnRes);
+    body.appendChild(typeRow);
+
+    // Product URL + Fetch
+    const urlRow = el('div','form-row');
+    urlRow.innerHTML=`<label>Product URL</label><div style="display:flex;gap:8px"><input class="form-input" id="f-product-url" value="${esc(item&&item.productUrl||'')}" placeholder="Paste product link…" style="flex:1"/><button class="stuff-fetch-btn" type="button" id="stuffFetchBtn">🔍 Fetch</button></div>`;
+    body.appendChild(urlRow);
+    const fetchStatus = el('div','smart-status'); fetchStatus.id='stuffFetchStatus'; body.appendChild(fetchStatus);
+
+    // Hidden poster store + preview
+    const posterStore = document.createElement('input'); posterStore.type='hidden'; posterStore.id='f-stuff-poster'; posterStore.value=item&&item.poster||''; body.appendChild(posterStore);
+    const previewWrap = el('div'); previewWrap.id='stuffImgPreview'; previewWrap.style.marginBottom='10px';
+    if(item&&item.poster){ const img=document.createElement('img'); img.className='stuff-img-preview'; img.src=item.poster; previewWrap.appendChild(img); }
+    body.appendChild(previewWrap);
+
+    setTimeout(()=>{ const b=document.getElementById('stuffFetchBtn'); if(b) b.onclick=fetchFromProductUrl; },0);
+  }
+
   // Title
   appendFormRow(body,'Title','f-title','input',item&&item.title||'');
 
@@ -1252,9 +1320,18 @@ function buildForm(body, c, item){
     appendFormRow(body,'Notes (optional)','f-notes','textarea',item&&item.notes||'');
   }
 
-  // Generic notes (not movies/tv/books/restaurants)
-  if(c.id!=='movies'&&c.id!=='tv-shows'&&c.id!=='books'&&c.id!=='restaurants'){
+  // Generic notes (not movies/tv/books/restaurants/stuff)
+  if(c.id!=='movies'&&c.id!=='tv-shows'&&c.id!=='books'&&c.id!=='restaurants'&&c.id!=='stuff'){
     appendFormRow(body,'Notes','f-notes','textarea',item&&(item.notes||item.description||item.reasons)||'');
+  }
+
+  // Stuff-specific: price + pros
+  if(c.id==='stuff'){
+    const curType2 = (item&&item.stuffType)||'buy';
+    const priceRow = el('div','form-row'); priceRow.id='stuff-price-row'; priceRow.style.display=curType2==='buy'?'':'none';
+    priceRow.innerHTML=`<label>Price</label><input class="form-input" id="f-stuff-price" value="${esc(item&&item.price||'')}" placeholder="e.g. $49"/>`;
+    body.appendChild(priceRow);
+    appendFormRow(body,'Pros','f-pros','textarea',item&&item.pros||'');
   }
 
   // Match / Rating stars
@@ -1416,6 +1493,8 @@ function saveItem(){
 
   const posterEl = document.getElementById('posterSection');
   const posterUrl = posterEl ? (posterEl.dataset.url||'') : '';
+  const stuffPosterInput = document.getElementById('f-stuff-poster');
+  const stuffPosterUrl = stuffPosterInput ? stuffPosterInput.value.trim() : '';
 
   const existing = editId ? items.find(i=>i.id===editId) : null;
 
@@ -1427,7 +1506,7 @@ function saveItem(){
     title: titleVal,
     year: v('f-year'),
     source: (()=>{ const p=document.getElementById('f-source-pick'); if(p) return p.value==='Other' ? (v('f-source-other')||'') : p.value; return v('f-source'); })()||'N/A',
-    poster: posterUrl || (existing ? existing.poster : null),
+    poster: stuffPosterUrl || posterUrl || (existing ? existing.poster : null),
   };
 
   if(c.subs.length) obj.sub = v('f-sub')||c.subs[0].id;
@@ -1475,7 +1554,14 @@ function saveItem(){
     obj.priceRange = v('f-price');
     obj.notes      = v('f-notes');
   }
-  if(c.id!=='movies'&&c.id!=='tv-shows'&&c.id!=='books'&&c.id!=='restaurants'){
+  if(c.id==='stuff'){
+    const activeTBtn = document.querySelector('.stuff-type-btn.on');
+    obj.stuffType = activeTBtn ? activeTBtn.dataset.t : 'buy';
+    obj.productUrl = v('f-product-url');
+    obj.price = v('f-stuff-price');
+    obj.pros = v('f-pros');
+  }
+  if(c.id!=='movies'&&c.id!=='tv-shows'&&c.id!=='books'&&c.id!=='restaurants'&&c.id!=='stuff'){
     obj.notes = v('f-notes');
   }
 
@@ -1591,6 +1677,52 @@ function saveOmdbKey(){
   const k=v('omdbKeyInput').trim(); if(!k) return;
   localStorage.setItem('omdb_key',k);
   const w=document.getElementById('omdbKeyWrap'); if(w) w.remove();
+}
+
+// ── Product URL Fetch (Stuff category) ────────────────────────────────────────
+async function fetchFromProductUrl(){
+  const urlEl = document.getElementById('f-product-url');
+  const url = urlEl ? urlEl.value.trim() : '';
+  if(!url){ document.getElementById('stuffFetchStatus').textContent='Paste a product URL first.'; return; }
+  document.getElementById('stuffFetchStatus').textContent='Fetching…';
+  try{
+    const proxyUrl = 'https://api.allorigins.win/get?url='+encodeURIComponent(url);
+    const res = await fetch(proxyUrl);
+    if(!res.ok) throw new Error('network');
+    const data = await res.json();
+    const html = data.contents||'';
+    const getMeta = (prop) => {
+      const m = html.match(new RegExp('<meta[^>]+(?:property|name)=["\']'+prop+'["\'][^>]+content=["\']([^"\']*)["\']','i'))
+               || html.match(new RegExp('<meta[^>]+content=["\']([^"\']*)["\'][^>]+(?:property|name)=["\']'+prop+'["\']','i'));
+      return m ? m[1].trim() : '';
+    };
+    const ogTitle = getMeta('og:title') || getMeta('twitter:title');
+    const ogImage = getMeta('og:image') || getMeta('twitter:image');
+    const ogDesc  = getMeta('og:description') || getMeta('twitter:description') || getMeta('description');
+
+    const titleEl = document.getElementById('f-title');
+    if(ogTitle && titleEl && !titleEl.value.trim()) titleEl.value = ogTitle;
+
+    const prosEl = document.getElementById('f-pros');
+    if(ogDesc && prosEl && !prosEl.value.trim()) prosEl.value = ogDesc;
+
+    const posterInput = document.getElementById('f-stuff-poster');
+    const previewWrap = document.getElementById('stuffImgPreview');
+    if(ogImage && posterInput){
+      posterInput.value = ogImage;
+      if(previewWrap){
+        previewWrap.innerHTML='';
+        const img = document.createElement('img'); img.className='stuff-img-preview'; img.src=ogImage;
+        previewWrap.appendChild(img);
+      }
+    }
+
+    const filled = [ogTitle&&'title', ogImage&&'image', ogDesc&&'description'].filter(Boolean);
+    document.getElementById('stuffFetchStatus').textContent = filled.length
+      ? 'Fetched: '+filled.join(', ')+'.' : 'No metadata found — fill in manually.';
+  } catch(e){
+    document.getElementById('stuffFetchStatus').textContent='Could not fetch URL. Try pasting details manually.';
+  }
 }
 
 // ── OMDB ──────────────────────────────────────────────────────────────────────

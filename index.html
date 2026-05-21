@@ -2097,14 +2097,19 @@ async function fetchProductInfo(url){
 let _ilsRate=null;
 async function getIlsRate(){
   if(_ilsRate) return _ilsRate;
-  try{
-    const r=await fetch('https://api.frankfurter.app/latest?from=USD&to=ILS',{signal:AbortSignal.timeout(5000)});
-    const d=await r.json();
-    _ilsRate=d.rates&&d.rates.ILS;
-  }catch(_){}
-  return _ilsRate||3.6;
+  // Try three independent free sources
+  const sources=[
+    async()=>{ const d=await(await fetch('https://open.er-api.com/v6/latest/USD',{signal:AbortSignal.timeout(5000)})).json(); return d.rates&&d.rates.ILS; },
+    async()=>{ const d=await(await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json',{signal:AbortSignal.timeout(5000)})).json(); return d.usd&&d.usd.ils; },
+    async()=>{ const d=await(await fetch('https://api.frankfurter.app/latest?from=USD&to=ILS',{signal:AbortSignal.timeout(5000)})).json(); return d.rates&&d.rates.ILS; },
+  ];
+  for(const src of sources){
+    try{ const r=await src(); if(r&&r>2&&r<10){ _ilsRate=r; return _ilsRate; } }catch(_){}
+  }
+  return 3.6;
 }
 window.convertStuffPrice=async function(){
+  _ilsRate=null; // always fetch fresh rate
   const input=document.getElementById('f-price');
   const status=document.getElementById('priceConvStatus');
   if(!input) return;

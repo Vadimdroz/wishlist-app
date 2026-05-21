@@ -1294,8 +1294,8 @@ function buildForm(body, c, item){
   // Title
   appendFormRow(body,'Title','f-title','input',item&&item.title||'');
 
-  // Poster (movies, tv-shows, books, restaurants, local-trips, intl-trips, stuff)
-  if(c.id==='movies'||c.id==='tv-shows'||c.id==='books'||c.id==='restaurants'||c.id==='local-trips'||c.id==='intl-trips'||c.id==='stuff'){
+  // Poster (movies, tv-shows, books, restaurants, local-trips, intl-trips — NOT stuff, image comes from URL fetch)
+  if(c.id==='movies'||c.id==='tv-shows'||c.id==='books'||c.id==='restaurants'||c.id==='local-trips'||c.id==='intl-trips'){
     body.appendChild(buildPosterSection(item&&item.poster));
   }
 
@@ -1524,7 +1524,14 @@ function buildForm(body, c, item){
     urlRow.innerHTML=`<label>Product URL</label><div style="display:flex;gap:8px"><input class="form-input" id="f-product-url" value="${esc(item&&item.productUrl||'')}" placeholder="Paste product link…" style="flex:1"/><button class="smart-btn" type="button" id="stuffFetchBtn" style="margin:0;width:auto;padding:8px 14px;white-space:nowrap">🔍 Fetch</button></div>`;
     buyPanel.appendChild(urlRow);
     const fetchSt=el('div','smart-status'); fetchSt.id='stuffFetchStatus'; buyPanel.appendChild(fetchSt);
-    appendFormRow(buyPanel,'Price','f-price','input',item&&item.price||'');
+    const priceRow=el('div','form-row');
+    priceRow.innerHTML=`<label>Price</label>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input class="form-input" id="f-price" value="${esc(item&&item.price||'')}" placeholder="e.g. ₪199 or $49" style="flex:1"/>
+        <button class="mode-btn" type="button" onclick="convertStuffPrice()" style="white-space:nowrap;padding:8px 12px" title="Convert between NIS and USD">₪⇄$</button>
+      </div>
+      <div id="priceConvStatus" style="font-size:.74rem;color:var(--muted);margin-top:4px;min-height:16px"></div>`;
+    buyPanel.appendChild(priceRow);
     const prosRow=el('div','form-row');
     prosRow.innerHTML=`<label>Pros</label><textarea class="form-textarea" id="f-pros" rows="2" placeholder="What's good about it…">${esc(item&&item.pros||'')}</textarea>`;
     buyPanel.appendChild(prosRow);
@@ -2085,6 +2092,42 @@ async function fetchProductInfo(url){
 
   return null;
 }
+
+// NIS ⇄ USD conversion
+let _ilsRate=null;
+async function getIlsRate(){
+  if(_ilsRate) return _ilsRate;
+  try{
+    const r=await fetch('https://api.frankfurter.app/latest?from=USD&to=ILS',{signal:AbortSignal.timeout(5000)});
+    const d=await r.json();
+    _ilsRate=d.rates&&d.rates.ILS;
+  }catch(_){}
+  return _ilsRate||3.7;
+}
+window.convertStuffPrice=async function(){
+  const input=document.getElementById('f-price');
+  const status=document.getElementById('priceConvStatus');
+  if(!input) return;
+  const raw=input.value.trim();
+  if(!raw){ if(status) status.textContent='Enter a price first.'; return; }
+  const num=parseFloat(raw.replace(/[^0-9.]/g,''));
+  if(!num||isNaN(num)){ if(status) status.textContent='Could not read a number.'; return; }
+  if(status) status.textContent='Getting rate…';
+  const rate=await getIlsRate();
+  const rateLabel=`(1 USD = ₪${rate.toFixed(2)})`;
+  const isNis=/[₪]|(nis|ils)\s*$/i.test(raw);
+  const isUsd=/[$]|(usd)\s*$/i.test(raw);
+  if(isUsd&&!isNis){
+    const nis=(num*rate).toFixed(2);
+    input.value=`₪${nis}`;
+    if(status) status.textContent=`$${num} → ₪${nis} ${rateLabel}`;
+  } else {
+    // NIS (explicit or assumed) → USD
+    const usd=(num/rate).toFixed(2);
+    input.value=`$${usd}`;
+    if(status) status.textContent=`₪${num} → $${usd} ${rateLabel}`;
+  }
+};
 
 window.setStuffMode=function(mode){
   document.getElementById('f-stuff-mode').value=mode;

@@ -1683,46 +1683,80 @@ function saveOmdbKey(){
 async function fetchFromProductUrl(){
   const urlEl = document.getElementById('f-product-url');
   const url = urlEl ? urlEl.value.trim() : '';
-  if(!url){ document.getElementById('stuffFetchStatus').textContent='Paste a product URL first.'; return; }
-  document.getElementById('stuffFetchStatus').textContent='Fetching…';
-  try{
-    const proxyUrl = 'https://api.allorigins.win/get?url='+encodeURIComponent(url);
-    const res = await fetch(proxyUrl);
-    if(!res.ok) throw new Error('network');
-    const data = await res.json();
-    const html = data.contents||'';
-    const getMeta = (prop) => {
-      const m = html.match(new RegExp('<meta[^>]+(?:property|name)=["\']'+prop+'["\'][^>]+content=["\']([^"\']*)["\']','i'))
-               || html.match(new RegExp('<meta[^>]+content=["\']([^"\']*)["\'][^>]+(?:property|name)=["\']'+prop+'["\']','i'));
-      return m ? m[1].trim() : '';
-    };
-    const ogTitle = getMeta('og:title') || getMeta('twitter:title');
-    const ogImage = getMeta('og:image') || getMeta('twitter:image');
-    const ogDesc  = getMeta('og:description') || getMeta('twitter:description') || getMeta('description');
+  const setStatus = msg => { const e=document.getElementById('stuffFetchStatus'); if(e) e.textContent=msg; };
+  if(!url){ setStatus('Paste a product URL first.'); return; }
+  setStatus('Fetching…');
 
-    const titleEl = document.getElementById('f-title');
-    if(ogTitle && titleEl && !titleEl.value.trim()) titleEl.value = ogTitle;
-
-    const prosEl = document.getElementById('f-pros');
-    if(ogDesc && prosEl && !prosEl.value.trim()) prosEl.value = ogDesc;
-
-    const posterInput = document.getElementById('f-stuff-poster');
-    const previewWrap = document.getElementById('stuffImgPreview');
-    if(ogImage && posterInput){
-      posterInput.value = ogImage;
-      if(previewWrap){
-        previewWrap.innerHTML='';
-        const img = document.createElement('img'); img.className='stuff-img-preview'; img.src=ogImage;
-        previewWrap.appendChild(img);
-      }
-    }
-
-    const filled = [ogTitle&&'title', ogImage&&'image', ogDesc&&'description'].filter(Boolean);
-    document.getElementById('stuffFetchStatus').textContent = filled.length
-      ? 'Fetched: '+filled.join(', ')+'.' : 'No metadata found — fill in manually.';
-  } catch(e){
-    document.getElementById('stuffFetchStatus').textContent='Could not fetch URL. Try pasting details manually.';
+  // Try proxies in order, return first successful HTML response
+  async function tryProxy(proxyUrl, jsonKey){
+    const r = await fetch(proxyUrl, {signal: AbortSignal.timeout(8000)});
+    if(!r.ok) throw new Error(r.status);
+    if(jsonKey){ const d=await r.json(); if(!d[jsonKey]) throw new Error('empty'); return d[jsonKey]; }
+    return r.text();
   }
+
+  let html = '';
+  const enc = encodeURIComponent(url);
+  const proxies = [
+    () => tryProxy('https://corsproxy.io/?'+enc, null),
+    () => tryProxy('https://api.allorigins.win/get?url='+enc, 'contents'),
+    () => tryProxy('https://api.codetabs.com/v1/proxy?quest='+enc, null),
+  ];
+  for(const p of proxies){
+    try{ html = await p(); if(html && html.length > 100) break; } catch(_){ /* try next */ }
+  }
+
+  if(!html || html.length < 100){
+    setStatus('Could not fetch — the site may block external requests. Fill in details manually.');
+    return;
+  }
+
+  // Robust meta tag extractor: handles any attribute order, single/double quotes, extra whitespace
+  function getMeta(...keys){
+    for(const key of keys){
+      const re = new RegExp(
+        '<meta[^>]+(?:property|name)\\s*=\\s*["\']' + key.replace(':','\\:') + '["\'][^>]+content\\s*=\\s*["\']([^"\']+)["\']' +
+        '|<meta[^>]+content\\s*=\\s*["\']([^"\']+)["\'][^>]+(?:property|name)\\s*=\\s*["\']' + key.replace(':','\\:') + '["\']',
+        'i'
+      );
+      const m = html.match(re);
+      const val = m && (m[1]||m[2]);
+      if(val && val.trim()) return val.trim();
+    }
+    return '';
+  }
+
+  // Also try <title> tag as last resort for title
+  function getTitle(){
+    const t = getMeta('og:title','twitter:title');
+    if(t) return t;
+    const m = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    return m ? m[1].trim() : '';
+  }
+
+  const ogTitle = getTitle();
+  const ogImage = getMeta('og:image','og:image:url','twitter:image','twitter:image:src');
+  const ogDesc  = getMeta('og:description','twitter:description','description');
+
+  const titleEl = document.getElementById('f-title');
+  if(ogTitle && titleEl && !titleEl.value.trim()) titleEl.value = ogTitle;
+
+  const prosEl = document.getElementById('f-pros');
+  if(ogDesc && prosEl && !prosEl.value.trim()) prosEl.value = ogDesc;
+
+  const posterInput = document.getElementById('f-stuff-poster');
+  const previewWrap = document.getElementById('stuffImgPreview');
+  if(ogImage && posterInput){
+    posterInput.value = ogImage;
+    if(previewWrap){
+      previewWrap.innerHTML='';
+      const img = document.createElement('img'); img.className='stuff-img-preview'; img.src=ogImage;
+      previewWrap.appendChild(img);
+    }
+  }
+
+  const filled = [ogTitle&&'title', ogImage&&'image', ogDesc&&'description'].filter(Boolean);
+  setStatus(filled.length ? '✓ Fetched: '+filled.join(', ')+'.' : 'No metadata found — fill in manually.');
 }
 
 // ── OMDB ──────────────────────────────────────────────────────────────────────

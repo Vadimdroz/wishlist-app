@@ -1329,8 +1329,14 @@ function buildForm(body, c, item){
   if(c.id==='stuff'){
     const curType2 = (item&&item.stuffType)||'buy';
     const priceRow = el('div','form-row'); priceRow.id='stuff-price-row'; priceRow.style.display=curType2==='buy'?'':'none';
-    priceRow.innerHTML=`<label>Price</label><input class="form-input" id="f-stuff-price" value="${esc(item&&item.price||'')}" placeholder="e.g. $49"/>`;
+    priceRow.innerHTML=`<label>Price</label>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input class="form-input" id="f-stuff-price" value="${esc(item&&item.price||'')}" placeholder="e.g. ₪199 or $49" style="flex:1"/>
+        <button class="stuff-fetch-btn" type="button" id="priceConvBtn" title="Convert currency" style="padding:8px 10px;font-size:.82rem">₪⇄$</button>
+      </div>
+      <div id="priceConvStatus" style="font-size:.74rem;color:var(--muted);margin-top:4px;min-height:16px"></div>`;
     body.appendChild(priceRow);
+    setTimeout(()=>{ const b=document.getElementById('priceConvBtn'); if(b) b.onclick=convertStuffPrice; },0);
     appendFormRow(body,'Pros','f-pros','textarea',item&&item.pros||'');
   }
 
@@ -1757,6 +1763,54 @@ async function fetchFromProductUrl(){
 
   const filled = [ogTitle&&'title', ogImage&&'image', ogDesc&&'description'].filter(Boolean);
   setStatus(filled.length ? '✓ Fetched: '+filled.join(', ')+'.' : 'No metadata found — fill in manually.');
+}
+
+// ── NIS ⇄ USD price conversion ────────────────────────────────────────────────
+let _ilsRate = null; // cached ILS per 1 USD
+
+async function getIlsRate(){
+  if(_ilsRate) return _ilsRate;
+  try{
+    const r = await fetch('https://api.frankfurter.app/latest?from=USD&to=ILS',{signal:AbortSignal.timeout(5000)});
+    const d = await r.json();
+    _ilsRate = d.rates && d.rates.ILS;
+  } catch(_){}
+  return _ilsRate || 3.7; // fallback rate
+}
+
+async function convertStuffPrice(){
+  const input = document.getElementById('f-stuff-price');
+  const status = document.getElementById('priceConvStatus');
+  if(!input) return;
+  const raw = input.value.trim();
+  if(!raw){ status.textContent='Enter a price first.'; return; }
+
+  // Detect currency from symbol or suffix (₪ / NIS / ILS → USD; $ / USD → NIS)
+  const nisMatch = raw.match(/[₪]|(nis|ils)\s*$/i);
+  const usdMatch = raw.match(/[$]|(usd)\s*$/i);
+  const num = parseFloat(raw.replace(/[^0-9.]/g,''));
+  if(!num || isNaN(num)){ status.textContent='Could not read a number from the price.'; return; }
+
+  status.textContent='Getting rate…';
+  const rate = await getIlsRate();
+  const rateLabel = `(1 USD = ₪${rate.toFixed(2)})`;
+
+  if(nisMatch && !usdMatch){
+    // NIS → USD
+    const usd = (num / rate).toFixed(2);
+    input.value = `$${usd}`;
+    status.textContent = `₪${num} → $${usd} ${rateLabel}`;
+  } else if(usdMatch && !nisMatch){
+    // USD → NIS
+    const nis = (num * rate).toFixed(2);
+    input.value = `₪${nis}`;
+    status.textContent = `$${num} → ₪${nis} ${rateLabel}`;
+  } else {
+    // Ambiguous — toggle: assume NIS if no symbol given
+    const usd = (num / rate).toFixed(2);
+    input.value = `$${usd}`;
+    status.textContent = `Assumed NIS: ₪${num} → $${usd} ${rateLabel}`;
+  }
 }
 
 // ── OMDB ──────────────────────────────────────────────────────────────────────

@@ -2102,7 +2102,7 @@ async function getIlsRate(){
     const d=await r.json();
     _ilsRate=d.rates&&d.rates.ILS;
   }catch(_){}
-  return _ilsRate||3.7;
+  return _ilsRate||3.6;
 }
 window.convertStuffPrice=async function(){
   const input=document.getElementById('f-price');

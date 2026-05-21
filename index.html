@@ -2062,9 +2062,29 @@ async function fetchIntlTripInfo(){
 }
 
 async function fetchProductInfo(url){
-  // 1️⃣ Try Microlink — headless-browser extraction, no API key needed
+  // 1️⃣ Shopify stores expose a free .json endpoint — try it first
+  if(/\/products\/[^?#]+/.test(url)){
+    try{
+      const jsonUrl=url.split('?')[0].replace(/\/$/,'')+'.json';
+      const r=await fetch(jsonUrl,{signal:AbortSignal.timeout(8000)});
+      if(r.ok){
+        const d=await r.json();
+        if(d.product){
+          const p=d.product;
+          const title=(p.title||'').slice(0,120).trim();
+          const image=p.images&&p.images[0]?p.images[0].src:'';
+          const desc=p.body_html?(p.body_html.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,400)):'';
+          const variant=p.variants&&p.variants[0];
+          const price=variant?'$'+parseFloat(variant.price).toFixed(2):'';
+          if(title) return {title,image,desc,price};
+        }
+      }
+    }catch(_){}
+  }
+
+  // 2️⃣ Microlink — headless-browser extraction
   try{
-    const mlRes=await fetch('https://api.microlink.io/?url='+encodeURIComponent(url)+'&palette=false&audio=false&video=false&iframe=false');
+    const mlRes=await fetch('https://api.microlink.io/?url='+encodeURIComponent(url)+'&palette=false&audio=false&video=false&iframe=false',{signal:AbortSignal.timeout(8000)});
     if(mlRes.ok){
       const ml=await mlRes.json();
       if(ml.status==='success'&&ml.data){
@@ -2078,9 +2098,9 @@ async function fetchProductInfo(url){
     }
   }catch(_){}
 
-  // 2️⃣ Fallback: JSONLink open-graph extractor
+  // 3️⃣ JSONLink open-graph extractor
   try{
-    const jlRes=await fetch('https://jsonlink.io/api/extract?url='+encodeURIComponent(url));
+    const jlRes=await fetch('https://jsonlink.io/api/extract?url='+encodeURIComponent(url),{signal:AbortSignal.timeout(8000)});
     if(jlRes.ok){
       const jl=await jlRes.json();
       const title=(jl.title||'').slice(0,120).trim();
@@ -2106,7 +2126,7 @@ async function getIlsRate(){
   for(const src of sources){
     try{ const r=await src(); if(r&&r>2&&r<10){ _ilsRate=r; return _ilsRate; } }catch(_){}
   }
-  return 3.6;
+  return 3.0;
 }
 window.convertStuffPrice=async function(){
   _ilsRate=null; // always fetch fresh rate

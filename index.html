@@ -254,23 +254,11 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <div id="authOverlay" style="display:none;position:fixed;inset:0;background:#0d0d14;z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px">
   <svg width="56" height="56" viewBox="0 0 120 120" fill="none"><rect width="120" height="120" rx="28" fill="#16161f"/><path d="M44 68 Q40 82 35 100" stroke="#c8b97a" stroke-width="2.4" stroke-linecap="round"/><circle cx="44" cy="65" r="4.5" fill="white"/><line x1="44" y1="65" x2="44" y2="42" stroke="white" stroke-width="1.4"/><circle cx="44" cy="40" r="3.2" fill="white"/><line x1="44" y1="65" x2="27" y2="50" stroke="white" stroke-width="1.4"/><circle cx="25.5" cy="48.5" r="3.2" fill="white"/><line x1="44" y1="65" x2="21" y2="65" stroke="white" stroke-width="1.4"/><circle cx="19" cy="65" r="3.2" fill="white"/></svg>
   <h1 style="font-size:1.5rem;font-weight:700;color:#f0f0f5;margin:0">Wishlist</h1>
-
-  <div id="authSignInSection" style="display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:340px">
-    <p style="color:#6b6b8a;font-size:.9rem;text-align:center;margin:0">Sign in to access your wishlist from anywhere</p>
-    <button id="googleSignInBtn" onclick="signInWithGoogle()" style="display:flex;align-items:center;gap:10px;background:#fff;color:#1f1f1f;border:none;padding:11px 20px;border-radius:12px;font-size:.95rem;font-weight:600;cursor:pointer;width:100%;justify-content:center">
-      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
-      Sign in with Google
-    </button>
-    <button onclick="document.getElementById('authSignInSection').style.display='none';document.getElementById('authSetupSection').style.display='flex'" style="background:none;border:none;color:#6b6b8a;font-size:.8rem;cursor:pointer;padding:4px">Configure Firebase</button>
-  </div>
-
-  <div id="authSetupSection" style="display:none;flex-direction:column;gap:12px;width:100%;max-width:400px">
-    <p style="color:#f0f0f5;font-size:.95rem;font-weight:600;margin:0">Firebase Setup</p>
-    <p style="color:#6b6b8a;font-size:.82rem;line-height:1.5;margin:0">1. Go to <strong style="color:#a5b4fc">console.firebase.google.com</strong> and create a project<br>2. Enable <strong style="color:#a5b4fc">Firestore</strong> and <strong style="color:#a5b4fc">Google Auth</strong><br>3. In Project Settings → Your apps → Web, copy the config object<br>4. Paste the JSON below</p>
-    <textarea id="fbConfigInput" rows="7" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}' style="width:100%;background:#1e1e2a;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#f0f0f5;font-size:.75rem;font-family:monospace;padding:10px;resize:vertical"></textarea>
-    <button onclick="saveFbConfig()" style="background:#6366f1;color:#fff;border:none;padding:12px;border-radius:12px;font-size:.95rem;font-weight:600;cursor:pointer">Save & Connect</button>
-    <button onclick="document.getElementById('authSetupSection').style.display='none';document.getElementById('authSignInSection').style.display='flex'" style="background:none;border:none;color:#6b6b8a;font-size:.8rem;cursor:pointer">Back</button>
-  </div>
+  <p style="color:#6b6b8a;font-size:.9rem;text-align:center;margin:0">Sign in to access your wishlist from anywhere</p>
+  <button id="googleSignInBtn" onclick="signInWithGoogle()" style="display:flex;align-items:center;gap:10px;background:#fff;color:#1f1f1f;border:none;padding:11px 24px;border-radius:12px;font-size:.95rem;font-weight:600;cursor:pointer">
+    <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
+    Sign in with Google
+  </button>
 </div>
 
 <nav class="nav">
@@ -347,10 +335,14 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 let _fbApp = null, _auth = null, _db = null, currentUser = null;
 (function initFirebase(){
   try {
-    const raw = localStorage.getItem('fb_config');
-    if (!raw) return;
-    const cfg = JSON.parse(raw);
-    if (!cfg.apiKey) return;
+    const cfg = {
+      apiKey: "AIzaSyDoEUHFnak4_ZxC252g2pdcZZI075Ty4qY",
+      authDomain: "wishlist-app-5ca53.firebaseapp.com",
+      projectId: "wishlist-app-5ca53",
+      storageBucket: "wishlist-app-5ca53.firebasestorage.app",
+      messagingSenderId: "87452439023",
+      appId: "1:87452439023:web:8e640c3803620f93e8e61a"
+    };
     _fbApp = firebase.initializeApp(cfg);
     _auth  = firebase.auth();
     _db    = firebase.firestore();
@@ -2701,16 +2693,6 @@ function autoBackup(){
 }
 
 // ─── Firebase Auth & Init ─────────────────────────────────────────────────────
-function saveFbConfig(){
-  try {
-    const raw = document.getElementById('fbConfigInput').value.trim();
-    const cfg = JSON.parse(raw);
-    if (!cfg.apiKey || !cfg.projectId) throw new Error('Missing apiKey or projectId');
-    localStorage.setItem('fb_config', JSON.stringify(cfg));
-    location.reload();
-  } catch(e){ alert('Invalid config JSON: ' + e.message); }
-}
-
 async function signInWithGoogle(){
   if (!_auth) return;
   document.getElementById('googleSignInBtn').textContent = 'Signing in…';
@@ -2756,12 +2738,8 @@ if (_auth) {
     }
   });
 } else {
-  // Firebase not initialized — show setup screen
+  // Firebase failed to initialize — show sign-in screen (will show error on click)
   document.getElementById('authOverlay').style.display = 'flex';
-  document.getElementById('authSignInSection').style.display = 'none';
-  document.getElementById('authSetupSection').style.display = 'flex';
-  const existingCfg = localStorage.getItem('fb_config');
-  if (existingCfg) document.getElementById('fbConfigInput').value = existingCfg;
 }
 </script>
 </body>

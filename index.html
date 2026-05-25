@@ -283,10 +283,15 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
     Wishlist
   </div>
   <div style="display:flex;align-items:center;gap:8px">
-    <button class="export-btn" onclick="exportCSV()" title="Export all items to CSV">
+    <button class="export-btn" onclick="exportJSON()" title="Export all items as JSON backup">
       <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
       Export
     </button>
+    <label class="export-btn" title="Import items from JSON backup" style="cursor:pointer">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 14l5-5 5 5M12 9v12"/></svg>
+      Import
+      <input type="file" accept=".json" onchange="importJSON(event)" style="display:none"/>
+    </label>
     <button id="navSignOutBtn" onclick="doSignOut()" title="Sign out" style="display:none;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:none;color:#6b6b8a;font-size:.75rem;font-weight:600;cursor:pointer">
       <img id="navUserAvatar" src="" alt="" style="width:20px;height:20px;border-radius:50%;display:none"/>
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
@@ -364,7 +369,7 @@ const BOOK_GENRES = ['Sci-fi','Health','Business','Investing','History','Biograp
 const YT_KEY = 'AIzaSyCUhLADIiLB4AN5A3wdwXd8X_D8PnOnNBg';
 const OMDB_KEY_DEFAULT = '919ea22c';
 const ROUTES_KEY_DEFAULT = 'AIzaSyCHKz6hURTGwVC-Ev_BT_ZB8eAwQvod4pE';
-const CLAUDE_KEY_DEFAULT = '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';
+const CLAUDE_KEY_DEFAULT = '';
 
 // ─── State ────────────────────────────────────────────────────────────────────
 // Recovery: merge data from all known keys so nothing is lost
@@ -2608,6 +2613,39 @@ document.addEventListener('keydown', e => {
     if(saveBtn) saveBtn.click();
   }
 });
+
+// ─── JSON Export / Import ─────────────────────────────────────────────────────
+function exportJSON(){
+  const blob = new Blob([JSON.stringify(items, null, 2)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `wishlist-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importJSON(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const imported = Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : null);
+      if(!imported) throw new Error('Unrecognised format');
+      // Merge: keep existing items not in the import, add all imported items
+      const existingIds = new Set(items.map(i => i.id));
+      const newItems = imported.filter(i => !existingIds.has(i.id));
+      items = [...items, ...newItems];
+      save();
+      renderContent();
+      alert(`Imported ${newItems.length} new items (${imported.length - newItems.length} duplicates skipped).`);
+    } catch(err){ alert('Import failed: ' + err.message); }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
 
 // ─── CSV Export ───────────────────────────────────────────────────────────────
 function exportCSV(){

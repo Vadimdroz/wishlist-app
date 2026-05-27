@@ -1800,7 +1800,7 @@ function toggleGenre(g){
 function selectedGenres(){ return [...selectedGenresList]; }
 
 // ─── Save item ────────────────────────────────────────────────────────────────
-function saveItem(){
+function saveItem(keepOpen=false){
   const c = getCat(catId);
   const titleVal = v('f-title').trim();
   if(!titleVal){ document.getElementById('f-title').focus(); return; }
@@ -1912,7 +1912,12 @@ function saveItem(){
 
   if(editId && existing){ Object.assign(existing,obj); }
   else { items.push(obj); }
-  save(); closeSheet(); renderContent();
+  save();
+  if(!keepOpen){ closeSheet(); renderContent(); }
+}
+
+function autoSaveIfEditing(){
+  if(editId) saveItem(true);
 }
 
 // ─── Smart Update ──────────────────────────────────────────────────────────────
@@ -2015,6 +2020,7 @@ async function fetchFromMaps(){
     }
 
     setMapsStatus('✓ Done! Review and adjust the fields below.');
+    autoSaveIfEditing();
   } catch(e){ setMapsStatus('Error: '+e.message); }
 }
 
@@ -2118,6 +2124,7 @@ async function fetchIntlTripInfo(){
       }catch(_){}
     }
     document.getElementById('itSmartStatus').textContent='✓ Done! All fields are editable.';
+    autoSaveIfEditing();
   }catch(e){ document.getElementById('itSmartStatus').textContent='Error: '+e.message; }
 }
 
@@ -2261,6 +2268,7 @@ async function stuffFetchProduct(){
   if(image){
     setFormPoster(image);
     document.getElementById('stuffFetchStatus').textContent='✓ Done — review and edit fields.';
+    autoSaveIfEditing();
   } else if(title){
     // No image found — generate one with Pollinations.ai
     document.getElementById('stuffFetchStatus').textContent='No image found — generating one…';
@@ -2371,6 +2379,7 @@ async function fetchFromMapsLocalTrip(){
       }catch(_){}
     }
     document.getElementById('ltMapsStatus').textContent='✓ Done! Adjust fields below, then click 🧭 Calculate for commute.';
+    autoSaveIfEditing();
   }catch(e){ document.getElementById('ltMapsStatus').textContent='Error: '+e.message; }
 }
 
@@ -2538,6 +2547,7 @@ async function fetchAndApplyBook(book){
   setField('f-kindle',`https://www.amazon.com/s?k=${kindleQ}&i=digital-text`);
   if(book.cover_i) setFormPoster(`https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg`);
   setSmartStatus('Done!');
+  autoSaveIfEditing();
 }
 
 // ── Shared picker / trailer helpers ───────────────────────────────────────────
@@ -2581,6 +2591,7 @@ async function fetchTrailer(query){
     }
     setSmartStatus('Done!');
   } catch(e){ setSmartStatus('Done (no trailer found)'); }
+  autoSaveIfEditing();
 }
 
 function setField(id, value){

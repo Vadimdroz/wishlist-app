@@ -439,9 +439,17 @@ function scheduleFirestoreSync(){
 async function pushToFirestore(){
   if (!currentUser || !_db) return;
   try {
+    // Strip base64 posters before pushing — Firestore has a 1MB doc limit
+    // and base64 images easily exceed it, causing silent save failures.
+    // HTTP/HTTPS poster URLs are kept; only data: URIs are cleared.
+    const itemsToSync = items.map(item =>
+      (item.poster && item.poster.startsWith('data:'))
+        ? { ...item, poster: null }
+        : item
+    );
     await _db.collection('users').doc(currentUser.uid)
       .collection('data').doc('wishlist')
-      .set({ items, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      .set({ items: itemsToSync, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
   } catch(e){ console.error('Firestore sync error:', e); }
 }
 
@@ -2758,7 +2766,27 @@ if (_auth) {
         const snap = await _db.collection('users').doc(user.uid)
           .collection('data').doc('wishlist').get();
         if (snap.exists && Array.isArray(snap.data().items)) {
-          items = snap.data().items;
+          const remoteItems = snap.data().items;
+          const localItems = JSON.parse(localStorage.getItem('wl_v3') || '[]');
+          const localById = Object.fromEntries(localItems.map(i => [i.id, i]));
+          const remoteById = Object.fromEntries(remoteItems.map(i => [i.id, i]));
+
+          // For each remote item, prefer the local version if it has more populated
+          // fields (e.g. API data that failed to reach Firestore due to size limits).
+          // Also restore base64 posters that were stripped before pushing.
+          const countFields = obj => Object.values(obj).filter(v => v != null && v !== '' && v !== 'N/A').length;
+          const merged = remoteItems.map(remote => {
+            const local = localById[remote.id];
+            if (!local) return remote;
+            const base = countFields(local) >= countFields(remote) ? { ...remote, ...local } : { ...local, ...remote };
+            // Always restore local base64 poster if remote stripped it
+            if (!base.poster && local.poster) base.poster = local.poster;
+            return base;
+          });
+          // Add any local-only items not yet in Firestore
+          localItems.forEach(local => { if (!remoteById[local.id]) merged.push(local); });
+
+          items = merged;
           localStorage.setItem('wl_v3', JSON.stringify(items));
         } else {
           // First sign-in: push existing localStorage data to Firestore

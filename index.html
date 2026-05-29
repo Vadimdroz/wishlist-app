@@ -2295,7 +2295,7 @@ async function fetchRecipeInfo(){
 
                 if(cuisine) setField('f-cuisine',cuisine);
                 if(name&&!v('f-title')) setField('f-title',name);
-                if(authorName){ const byEl=document.getElementById('f-recipe-by'); if(byEl&&!byEl.value) byEl.value=String(authorName); }
+                if(authorName){ const byEl=document.getElementById('f-recipe-by'); if(byEl&&!byEl.value){ const cleaned=String(authorName).replace(/^@\S+$/,'').trim(); if(cleaned) byEl.value=cleaned; } }
                 if(imgUrl) setFormPoster(imgUrl);
                 let notes='';
                 if(timeStr) notes+=`⏱ ${timeStr}\n\n`;
@@ -2337,7 +2337,7 @@ async function fetchRecipeInfo(){
   }
   if(!recipeText){ setStatus('Could not fetch the recipe page. Try pasting the recipe text into the field above.'); return; }
 
-  const prompt=`From this recipe text, extract the following and respond with ONLY a valid JSON object — no prose, no markdown:\n- "cuisine": cuisine type (e.g. "Italian", "Asian", "Middle Eastern") — empty string if unknown\n- "totalTime": total prep + cook time as a human string (e.g. "45 min", "1 hr 20 min") — empty string if unknown\n- "ingredients": ingredients as a newline-separated list, keep it concise\n- "name": recipe name — empty string if not clear\n- "author": recipe author or creator name (e.g. "Jamie Oliver", "Ottolenghi") — empty string if unknown\n\nRecipe text (first 3000 chars):\n${recipeText.slice(0,3000)}`;
+  const prompt=`From this recipe text, extract the following and respond with ONLY a valid JSON object — no prose, no markdown:\n- "cuisine": cuisine type (e.g. "Italian", "Asian", "Middle Eastern") — empty string if unknown\n- "totalTime": total prep + cook time as a human string (e.g. "45 min", "1 hr 20 min") — empty string if unknown\n- "ingredients": ingredients as a newline-separated list, keep it concise\n- "name": recipe name — empty string if not clear\n- "author": recipe creator's real/display name (e.g. "Jamie Oliver", "Ottolenghi") — use the person's actual name, NOT a social media handle or @username; if only a handle is available return empty string\n\nRecipe text (first 3000 chars):\n${recipeText.slice(0,3000)}`;
 
   try{
     let rawText='';
@@ -2384,7 +2384,7 @@ async function fetchRecipeInfo(){
     const info=JSON.parse(cleaned);
     if(info.cuisine) setField('f-cuisine',info.cuisine);
     if(info.name&&!v('f-title')) setField('f-title',info.name);
-    if(info.author){ const byEl=document.getElementById('f-recipe-by'); if(byEl&&!byEl.value) byEl.value=info.author; }
+    if(info.author){ const byEl=document.getElementById('f-recipe-by'); if(byEl&&!byEl.value){ const cleaned=String(info.author).replace(/^@\S+$/,'').trim(); if(cleaned) byEl.value=cleaned; } }
     let notes='';
     if(info.totalTime) notes+=`⏱ ${info.totalTime}\n\n`;
     if(info.ingredients) notes+=`🧂 Ingredients:\n${info.ingredients}`;

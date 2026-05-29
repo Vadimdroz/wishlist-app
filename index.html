@@ -1119,7 +1119,7 @@ function openDetail(id){
   body.innerHTML = '';
 
   // Top: poster + info
-  const hasMedia = (c.id==='movies'||c.id==='tv-shows'||c.id==='books') && item.poster && item.poster!=='N/A';
+  const hasMedia = item.poster && item.poster!=='N/A';
   if(hasMedia){
     const top = el('div','detail-top');
     const img = document.createElement('img');
@@ -1398,8 +1398,8 @@ function buildForm(body, c, item){
   // Title
   appendFormRow(body,'Title','f-title','input',item&&item.title||'');
 
-  // Poster (movies, tv-shows, books, restaurants, local-trips, intl-trips — NOT stuff, image comes from URL fetch)
-  if(c.id==='movies'||c.id==='tv-shows'||c.id==='books'||c.id==='restaurants'||c.id==='recipes'||c.id==='local-trips'||c.id==='intl-trips'){
+  // Poster — all categories that can have an image
+  if(c.id==='movies'||c.id==='tv-shows'||c.id==='books'||c.id==='restaurants'||c.id==='recipes'||c.id==='local-trips'||c.id==='intl-trips'||c.id==='stuff'){
     body.appendChild(buildPosterSection(item&&item.poster));
   }
 

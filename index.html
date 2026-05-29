@@ -2241,10 +2241,15 @@ async function fetchRecipeInfo(){
       ||h.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
     return m?m[1]:'';
   }
-  // Extract first https image URL from Jina Reader markdown output
+  // Extract first food-like image URL from Jina Reader markdown output, skipping author/avatar/logo images
   function extractMarkdownImage(text){
-    const m=text.match(/!\[[^\]]*\]\((https?:\/\/[^)]+)\)/);
-    return m?m[1]:'';
+    const skipPattern=/avatar|author|profile|gravatar|logo|icon|headshot|bio|badge|banner|sprite/i;
+    const re=/!\[[^\]]*\]\((https?:\/\/[^)]+)\)/g;
+    let m;
+    while((m=re.exec(text))!==null){
+      if(!skipPattern.test(m[1])) return m[1];
+    }
+    return '';
   }
 
   // ── Strategy 1: Schema.org JSON-LD (works on AllRecipes, BBC Good Food, etc.)
@@ -2313,10 +2318,11 @@ async function fetchRecipeInfo(){
       const jinaRes=await fetch('https://r.jina.ai/'+url,{signal:AbortSignal.timeout(15000)});
       if(jinaRes.ok){
         recipeText=await jinaRes.text();
-        // Try image from Jina markdown; fall back to OG image from HTML if we have it
-        const jinaImg=extractMarkdownImage(recipeText);
-        if(jinaImg) setFormPoster(jinaImg);
-        else if(htmlForImage){ const ogImg2=extractOgImage(htmlForImage); if(ogImg2) setFormPoster(ogImg2); }
+        // og:image is the site's chosen hero — for recipe pages this is almost always the dish photo
+        // Fall back to first non-avatar markdown image from Jina output
+        let imgFound=false;
+        if(htmlForImage){ const ogImg2=extractOgImage(htmlForImage); if(ogImg2){ setFormPoster(ogImg2); imgFound=true; } }
+        if(!imgFound){ const jinaImg=extractMarkdownImage(recipeText); if(jinaImg) setFormPoster(jinaImg); }
       }
     }catch(_){}
   }

@@ -1493,10 +1493,10 @@ function buildForm(body, c, item){
     recPasteRow.innerHTML=`<label style="color:var(--muted);font-size:.78rem">Or paste recipe text here for Smart Fill</label><textarea class="form-textarea" id="f-recipe-paste" rows="3" placeholder="Paste the full recipe text here and click Smart Fill above…"></textarea>`;
     body.appendChild(recPasteRow);
     const recSt=el('div','smart-status'); recSt.id='recipeSmartStatus'; body.appendChild(recSt);
-    // Claude key prompt if needed
-    if(!CLAUDE_KEY_DEFAULT&&!localStorage.getItem('claude_key')){
-      const ckw=el('div'); ckw.id='recipeClaudeKeyWrap';
-      ckw.innerHTML=`<div class="form-row" style="margin-top:-4px"><label style="color:var(--muted);font-size:.78rem">Anthropic API key needed as fallback for Smart Fill</label><div style="display:flex;gap:8px"><input class="form-input" id="claudeKeyInput" placeholder="sk-ant-…" style="flex:1"/><button class="poster-url-btn" type="button" onclick="saveClaudeKey()">Save key</button></div></div>`;
+    // AI key prompt if needed (Claude or Gemini)
+    if(!CLAUDE_KEY_DEFAULT&&!localStorage.getItem('claude_key')&&!localStorage.getItem('gemini_key')){
+      const ckw=el('div'); ckw.id='recipeAiKeyWrap';
+      ckw.innerHTML=`<div class="form-row" style="margin-top:-4px"><label style="color:var(--muted);font-size:.78rem">AI API key needed as fallback (Claude: sk-ant-… or Gemini: AIza…)</label><div style="display:flex;gap:8px"><input class="form-input" id="aiKeyInput" placeholder="sk-ant-… or AIza…" style="flex:1"/><button class="poster-url-btn" type="button" onclick="saveAiKey()">Save key</button></div></div>`;
       body.appendChild(ckw);
     }
     setTimeout(()=>{ const b=document.getElementById('recipeSmartBtn'); if(b) b.onclick=fetchRecipeInfo; },0);
@@ -2094,6 +2094,19 @@ window.saveClaudeKey = function(){
   document.getElementById('itSmartStatus').textContent='API key saved — click Smart Fill.';
 };
 
+window.saveAiKey = function(){
+  const k=(document.getElementById('aiKeyInput')||{}).value||'';
+  if(!k) return;
+  // Auto-detect: Claude keys start with sk-ant-, everything else treated as Gemini
+  if(k.startsWith('sk-ant-')){
+    localStorage.setItem('claude_key',k);
+  } else {
+    localStorage.setItem('gemini_key',k);
+  }
+  const w=document.getElementById('recipeAiKeyWrap'); if(w) w.remove();
+  document.getElementById('recipeSmartStatus').textContent='API key saved — click Smart Fill.';
+};
+
 async function fetchIntlTripInfo(){
   const desc=(document.getElementById('f-trip-desc')||{}).value||'';
   if(!desc){ document.getElementById('itSmartStatus').textContent='Enter a trip description first.'; return; }
@@ -2251,9 +2264,10 @@ async function fetchRecipeInfo(){
     }catch(_){}
   }
 
-  // ── Strategy 2: Claude API (URL via Jina Reader, or raw pasted text)
+  // ── Strategy 2: AI fallback (Claude or Gemini)
   const claudeKey=localStorage.getItem('claude_key')||CLAUDE_KEY_DEFAULT;
-  if(!claudeKey){ setStatus('No recipe data found via Schema.org. Add an Anthropic API key to use AI fallback.'); return; }
+  const geminiKey=localStorage.getItem('gemini_key')||'';
+  if(!claudeKey&&!geminiKey){ setStatus('No recipe data found via Schema.org. Add a Claude or Gemini API key to use AI fallback.'); return; }
 
   setStatus('Reading recipe with AI…');
   let recipeText=pasteTxt;
@@ -2263,23 +2277,38 @@ async function fetchRecipeInfo(){
       if(jinaRes.ok) recipeText=await jinaRes.text();
     }catch(_){}
   }
-  if(!recipeText){ setStatus('Could not fetch the recipe page. Try pasting the ingredients into Notes manually.'); return; }
+  if(!recipeText){ setStatus('Could not fetch the recipe page. Try pasting the recipe text into the field above.'); return; }
+
+  const prompt=`From this recipe text, extract the following and respond with ONLY a valid JSON object — no prose, no markdown:\n- "cuisine": cuisine type (e.g. "Italian", "Asian", "Middle Eastern") — empty string if unknown\n- "totalTime": total prep + cook time as a human string (e.g. "45 min", "1 hr 20 min") — empty string if unknown\n- "ingredients": ingredients as a newline-separated list, keep it concise\n- "name": recipe name — empty string if not clear\n\nRecipe text (first 3000 chars):\n${recipeText.slice(0,3000)}`;
 
   try{
-    let modelId='claude-3-haiku-20240307';
-    try{
-      const mRes=await fetch('https://api.anthropic.com/v1/models',{headers:{'x-api-key':claudeKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}});
-      if(mRes.ok){ const mData=await mRes.json(); const ids=(mData.data||[]).map(m=>m.id); modelId=ids.find(id=>id.includes('haiku'))||ids.find(id=>id.includes('sonnet'))||ids[0]||modelId; }
-    }catch(_){}
+    let rawText='';
 
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':claudeKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:modelId,max_tokens:600,messages:[{role:'user',content:`From this recipe text, extract the following and respond with ONLY a valid JSON object — no prose, no markdown:\n- "cuisine": cuisine type (e.g. "Italian", "Asian", "Middle Eastern") — empty string if unknown\n- "totalTime": total prep + cook time as a human string (e.g. "45 min", "1 hr 20 min") — empty string if unknown\n- "ingredients": ingredients as a newline-separated list, keep it concise\n- "name": recipe name — empty string if not clear\n\nRecipe text (first 3000 chars):\n${recipeText.slice(0,3000)}`}]})
-    });
-    if(!res.ok){ setStatus('AI error: HTTP '+res.status); return; }
-    const data=await res.json();
-    const rawText=(data.content&&data.content[0]&&data.content[0].text)||'';
+    if(geminiKey){
+      const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
+      });
+      if(!res.ok){ setStatus('Gemini error: HTTP '+res.status); return; }
+      const data=await res.json();
+      rawText=data?.candidates?.[0]?.content?.parts?.[0]?.text||'';
+    } else {
+      let modelId='claude-3-haiku-20240307';
+      try{
+        const mRes=await fetch('https://api.anthropic.com/v1/models',{headers:{'x-api-key':claudeKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}});
+        if(mRes.ok){ const mData=await mRes.json(); const ids=(mData.data||[]).map(m=>m.id); modelId=ids.find(id=>id.includes('haiku'))||ids.find(id=>id.includes('sonnet'))||ids[0]||modelId; }
+      }catch(_){}
+      const res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':claudeKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:modelId,max_tokens:600,messages:[{role:'user',content:prompt}]})
+      });
+      if(!res.ok){ setStatus('Claude error: HTTP '+res.status); return; }
+      const data=await res.json();
+      rawText=(data.content&&data.content[0]&&data.content[0].text)||'';
+    }
+
     let cleaned=rawText.trim();
     if(cleaned.startsWith('```')) cleaned=cleaned.replace(/^```[a-z]*\n?/i,'').replace(/```\s*$/,'').trim();
     if(!cleaned.startsWith('{')){ const match=rawText.match(/\{[\s\S]*\}/); if(match) cleaned=match[0]; }

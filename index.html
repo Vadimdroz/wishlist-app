@@ -2231,6 +2231,24 @@ async function fetchRecipeInfo(){
       if(r.ok){
         const wrapper=await r.json();
         const html=wrapper.contents||'';
+
+        // Helper: extract best image URL from Schema.org image field
+        function extractSchemaImage(img){
+          if(!img) return '';
+          if(typeof img==='string') return img;
+          if(Array.isArray(img)){
+            const first=img[0];
+            return typeof first==='string'?first:(first&&first.url)||'';
+          }
+          return img.url||'';
+        }
+        // OG image fallback from raw HTML
+        function extractOgImage(h){
+          const m=h.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+            ||h.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+          return m?m[1]:'';
+        }
+
         const ldMatches=[...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
         for(const m of ldMatches){
           try{
@@ -2247,9 +2265,11 @@ async function fetchRecipeInfo(){
                   :[prepTime&&`Prep: ${parseIso8601Duration(prepTime)}`,cookTime&&`Cook: ${parseIso8601Duration(cookTime)}`].filter(Boolean).join(' · ');
                 const ingredients=(recipe.recipeIngredient||[]).join('\n');
                 const name=recipe.name||'';
+                const imgUrl=extractSchemaImage(recipe.image)||extractOgImage(html);
 
                 if(cuisine) setField('f-cuisine',cuisine);
                 if(name&&!v('f-title')) setField('f-title',name);
+                if(imgUrl) setFormPoster(imgUrl);
                 let notes='';
                 if(timeStr) notes+=`⏱ ${timeStr}\n\n`;
                 if(ingredients) notes+=`🧂 Ingredients:\n${ingredients}`;
@@ -2260,6 +2280,10 @@ async function fetchRecipeInfo(){
             }
           }catch(_){}
         }
+
+        // Schema.org not found — try OG image alone before falling through to AI
+        const ogImg=extractOgImage(html);
+        if(ogImg) setFormPoster(ogImg);
       }
     }catch(_){}
   }

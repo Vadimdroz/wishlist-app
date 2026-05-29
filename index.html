@@ -1496,7 +1496,7 @@ function buildForm(body, c, item){
     // AI key prompt if needed (Claude or Gemini)
     if(!CLAUDE_KEY_DEFAULT&&!localStorage.getItem('claude_key')&&!localStorage.getItem('gemini_key')){
       const ckw=el('div'); ckw.id='recipeAiKeyWrap';
-      ckw.innerHTML=`<div class="form-row" style="margin-top:-4px"><label style="color:var(--muted);font-size:.78rem">AI API key needed as fallback (Claude: sk-ant-… or Gemini: AIza…)</label><div style="display:flex;gap:8px"><input class="form-input" id="aiKeyInput" placeholder="sk-ant-… or AIza…" style="flex:1"/><button class="poster-url-btn" type="button" onclick="saveAiKey()">Save key</button></div></div>`;
+      ckw.innerHTML=`<div class="form-row" style="margin-top:-4px"><label style="color:var(--muted);font-size:.78rem">Anthropic / Gemini API key needed as fallback for Smart Fill</label><div style="display:flex;gap:8px"><input class="form-input" id="aiKeyInput" placeholder="sk-ant-… or AIza…" style="flex:1"/><button class="poster-url-btn" type="button" onclick="saveAiKey()">Save key</button></div></div>`;
       body.appendChild(ckw);
     }
     setTimeout(()=>{ const b=document.getElementById('recipeSmartBtn'); if(b) b.onclick=fetchRecipeInfo; },0);
@@ -1611,7 +1611,7 @@ function buildForm(body, c, item){
     // Claude key prompt only if no built-in or stored key
     if(!CLAUDE_KEY_DEFAULT&&!localStorage.getItem('claude_key')){
       const ckw=el('div'); ckw.id='claudeKeyWrap';
-      ckw.innerHTML=`<div class="form-row" style="margin-top:-4px"><label style="color:var(--muted);font-size:.78rem">Anthropic API key needed for Smart Fill</label><div style="display:flex;gap:8px"><input class="form-input" id="claudeKeyInput" placeholder="sk-ant-…" style="flex:1"/><button class="poster-url-btn" type="button" onclick="saveClaudeKey()">Save key</button></div></div>`;
+      ckw.innerHTML=`<div class="form-row" style="margin-top:-4px"><label style="color:var(--muted);font-size:.78rem">Anthropic / Gemini API key needed for Smart Fill</label><div style="display:flex;gap:8px"><input class="form-input" id="claudeKeyInput" placeholder="sk-ant-… or AIza…" style="flex:1"/><button class="poster-url-btn" type="button" onclick="saveClaudeKey()">Save key</button></div></div>`;
       body.appendChild(ckw);
     }
 

@@ -2536,8 +2536,26 @@ async function stuffFetchProduct(){
   function extractOgImg(h){ const m=h.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)||h.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i); return m?m[1]:''; }
   if(!image&&htmlForImage) image=extractOgImg(htmlForImage);
 
-  // ── AI fallback when title or key details are missing ─────────────────
-  const needsAI=!title||(!price&&!desc);
+  // Try to extract price from HTML when Microlink/JSONLink didn't get it
+  // Covers Schema.org offers.price, itemprop, Amazon a-price-whole, and generic patterns
+  if(!price&&htmlForImage){
+    const tryPrice=[
+      // Schema.org JSON-LD offers.price
+      ()=>{ try{ const lds=[...htmlForImage.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)]; for(const m of lds){ const d=JSON.parse(m[1]); const offers=(d.offers||(d['@graph']||[]).find(x=>x.offers)?.offers); if(offers){ const p=Array.isArray(offers)?offers[0]:offers; if(p.price) return '$'+p.price; } } }catch(_){} return ''; },
+      // itemprop="price"
+      ()=>{ const m=htmlForImage.match(/itemprop=["']price["'][^>]+content=["']([^"']+)["']/i)||htmlForImage.match(/content=["']([^"']+)["'][^>]+itemprop=["']price["']/i); return m?'$'+m[1]:''; },
+      // Amazon: a-price-whole + a-price-fraction
+      ()=>{ const w=htmlForImage.match(/class="a-price-whole">(\d+)/); const f=htmlForImage.match(/class="a-price-fraction">(\d+)/); return w?'$'+w[1]+(f?'.'+f[1]:''):''; },
+      // Amazon: "priceAmount":"XX.XX"
+      ()=>{ const m=htmlForImage.match(/"priceAmount"\s*:\s*"([^"]+)"/); return m?'$'+m[1]:''; },
+      // Generic: "price":"XX.XX" in JSON blobs
+      ()=>{ const m=htmlForImage.match(/"price"\s*:\s*"(\$?[\d.,]+)"/); return m?m[1]:''; },
+    ];
+    for(const fn of tryPrice){ const p=fn(); if(p&&p!=='$'){ price=p; break; } }
+  }
+
+  // AI fallback: always run if price is still missing (not just when title is missing)
+  const needsAI=!title||!price;
   if(needsAI){
     const claudeKey=localStorage.getItem('claude_key')||CLAUDE_KEY_DEFAULT;
     const geminiKey=localStorage.getItem('gemini_key')||'';

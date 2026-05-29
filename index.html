@@ -835,12 +835,14 @@ function buildItemCard(item, c){
     }
     body.appendChild(bottom);
   } else if(c.id==='recipes'){
-    if(item.cuisine){
+    const timeMatch=item.notes&&item.notes.match(/⏱\s*([^\n]+)/);
+    const timeStr=timeMatch?timeMatch[1].trim():'';
+    if(item.cuisine||timeStr){
       const metaRow=el('div','item-card-meta'); metaRow.style.marginTop='4px';
-      metaRow.insertAdjacentHTML('beforeend',`<span class="genre-pill on" style="pointer-events:none">${esc(item.cuisine)}</span>`);
+      if(item.cuisine) metaRow.insertAdjacentHTML('beforeend',`<span class="genre-pill on" style="pointer-events:none">${esc(item.cuisine)}</span>`);
+      if(timeStr) metaRow.insertAdjacentHTML('beforeend',`<span class="badge badge-year">⏱ ${esc(timeStr)}</span>`);
       body.appendChild(metaRow);
     }
-    if(item.notes){ const n=el('div','item-card-notes'); n.textContent=item.notes; body.appendChild(n); }
     const bottom=el('div','item-card-bottom');
     if(hasSource){ const st=el('span','source-tag'); st.textContent='via '+item.source; bottom.appendChild(st); }
     if(item.recipeUrl){

@@ -1488,6 +1488,10 @@ function buildForm(body, c, item){
     const recUrlRow=el('div','form-row');
     recUrlRow.innerHTML=`<label>Recipe URL (optional)</label><div style="display:flex;gap:8px"><input class="form-input" id="f-recipe-url" value="${esc(item&&item.recipeUrl||'')}" placeholder="Paste recipe URL…" style="flex:1"/><button class="smart-btn" type="button" id="recipeSmartBtn" style="margin:0;width:auto;padding:8px 14px;white-space:nowrap">🍳 Smart Fill</button></div>`;
     body.appendChild(recUrlRow);
+    // Free-text paste alternative
+    const recPasteRow=el('div','form-row');
+    recPasteRow.innerHTML=`<label style="color:var(--muted);font-size:.78rem">Or paste recipe text here for Smart Fill</label><textarea class="form-textarea" id="f-recipe-paste" rows="3" placeholder="Paste the full recipe text here and click Smart Fill above…"></textarea>`;
+    body.appendChild(recPasteRow);
     const recSt=el('div','smart-status'); recSt.id='recipeSmartStatus'; body.appendChild(recSt);
     // Claude key prompt if needed
     if(!CLAUDE_KEY_DEFAULT&&!localStorage.getItem('claude_key')){
@@ -2199,10 +2203,10 @@ function parseIso8601Duration(iso){
 
 async function fetchRecipeInfo(){
   const url=(document.getElementById('f-recipe-url')||{}).value||'';
-  const notesTxt=(document.getElementById('f-notes')||{}).value||'';
+  const pasteTxt=(document.getElementById('f-recipe-paste')||{}).value||'';
   const setStatus=msg=>{ const e=document.getElementById('recipeSmartStatus'); if(e) e.textContent=msg; };
 
-  if(!url&&!notesTxt){ setStatus('Paste a recipe URL or add some text to Notes first.'); return; }
+  if(!url&&!pasteTxt){ setStatus('Paste a recipe URL or paste recipe text in the field below the URL.'); return; }
 
   setStatus('Fetching recipe…');
 
@@ -2252,7 +2256,7 @@ async function fetchRecipeInfo(){
   if(!claudeKey){ setStatus('No recipe data found via Schema.org. Add an Anthropic API key to use AI fallback.'); return; }
 
   setStatus('Reading recipe with AI…');
-  let recipeText=notesTxt;
+  let recipeText=pasteTxt;
   if(url&&!recipeText){
     try{
       const jinaRes=await fetch('https://r.jina.ai/'+url,{signal:AbortSignal.timeout(15000)});

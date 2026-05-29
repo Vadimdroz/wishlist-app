@@ -2241,15 +2241,24 @@ async function fetchRecipeInfo(){
       ||h.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
     return m?m[1]:'';
   }
-  // Extract first food-like image URL from Jina Reader markdown output, skipping author/avatar/logo images
+  // Extract a food-likely image from Jina markdown.
+  // Author photos appear above the recipe title; we scan from the first heading downward.
+  // Falls back to the full text if nothing found after the heading.
   function extractMarkdownImage(text){
-    const skipPattern=/avatar|author|profile|gravatar|logo|icon|headshot|bio|badge|banner|sprite/i;
-    const re=/!\[[^\]]*\]\((https?:\/\/[^)]+)\)/g;
-    let m;
-    while((m=re.exec(text))!==null){
-      if(!skipPattern.test(m[1])) return m[1];
+    const skip=/avatar|author|profile|gravatar|logo|icon|headshot|bio|badge|banner|sprite/i;
+    const scanFor=src=>{
+      const re=/!\[[^\]]*\]\((https?:\/\/[^)]+)\)/g;
+      let m;
+      while((m=re.exec(src))!==null){ if(!skip.test(m[1])) return m[1]; }
+      return '';
+    };
+    // Prefer images that appear after the first H1/H2 (recipe title area)
+    const headingIdx=text.search(/^#{1,2}\s/m);
+    if(headingIdx>0){
+      const afterTitle=scanFor(text.slice(headingIdx));
+      if(afterTitle) return afterTitle;
     }
-    return '';
+    return scanFor(text);
   }
 
   // ── Strategy 1: Schema.org JSON-LD (works on AllRecipes, BBC Good Food, etc.)

@@ -843,6 +843,7 @@ function buildItemCard(item, c){
       if(timeStr) metaRow.insertAdjacentHTML('beforeend',`<span class="badge badge-year">⏱ ${esc(timeStr)}</span>`);
       body.appendChild(metaRow);
     }
+    if(item.recipeBy){ const byRow=el('div','item-card-notes'); byRow.style.cssText='margin-top:3px;color:var(--muted);font-size:.78rem'; byRow.textContent='by '+item.recipeBy; body.appendChild(byRow); }
     const bottom=el('div','item-card-bottom');
     if(hasSource){ const st=el('span','source-tag'); st.textContent='via '+item.source; bottom.appendChild(st); }
     if(item.recipeUrl){
@@ -1194,6 +1195,7 @@ function openDetail(id){
   // Recipes detail
   if(c.id==='recipes'){
     if(item.cuisine) appendSection(body,'Cuisine',item.cuisine);
+    if(item.recipeBy) appendSection(body,'Recipe by',item.recipeBy);
     if(item.recipeUrl){
       const s=el('div','detail-section');
       const sl=el('div','detail-section-label'); sl.textContent='Recipe Link'; s.appendChild(sl);
@@ -1502,6 +1504,7 @@ function buildForm(body, c, item){
       body.appendChild(ckw);
     }
     setTimeout(()=>{ const b=document.getElementById('recipeSmartBtn'); if(b) b.onclick=fetchRecipeInfo; },0);
+    appendFormRow(body,'Recipe by (optional)','f-recipe-by','input',item&&item.recipeBy||'');
     appendFormRow(body,'Notes / ingredients (optional)','f-notes','textarea',item&&item.notes||'');
   }
 
@@ -1934,6 +1937,7 @@ function saveItem(){
   if(c.id==='recipes'){
     obj.cuisine   = v('f-cuisine');
     obj.recipeUrl = v('f-recipe-url');
+    obj.recipeBy  = v('f-recipe-by');
     obj.notes     = v('f-notes');
   }
   if(c.id==='local-trips'){
@@ -2225,7 +2229,27 @@ async function fetchRecipeInfo(){
 
   setStatus('Fetching recipe…');
 
+  // ── Image helpers ─────────────────────────────────────────────────────────
+  function extractSchemaImage(img){
+    if(!img) return '';
+    if(typeof img==='string') return img;
+    if(Array.isArray(img)){ const f=img[0]; return typeof f==='string'?f:(f&&f.url)||''; }
+    return img.url||'';
+  }
+  function extractOgImage(h){
+    const m=h.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+      ||h.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+    return m?m[1]:'';
+  }
+  // Extract first https image URL from Jina Reader markdown output
+  function extractMarkdownImage(text){
+    const m=text.match(/!\[[^\]]*\]\((https?:\/\/[^)]+)\)/);
+    return m?m[1]:'';
+  }
+
   // ── Strategy 1: Schema.org JSON-LD (works on AllRecipes, BBC Good Food, etc.)
+  // Also always grab the image from HTML regardless of whether Schema.org succeeds
+  let htmlForImage='';
   if(url){
     try{
       const proxyUrl='https://api.allorigins.win/get?url='+encodeURIComponent(url);
@@ -2233,23 +2257,7 @@ async function fetchRecipeInfo(){
       if(r.ok){
         const wrapper=await r.json();
         const html=wrapper.contents||'';
-
-        // Helper: extract best image URL from Schema.org image field
-        function extractSchemaImage(img){
-          if(!img) return '';
-          if(typeof img==='string') return img;
-          if(Array.isArray(img)){
-            const first=img[0];
-            return typeof first==='string'?first:(first&&first.url)||'';
-          }
-          return img.url||'';
-        }
-        // OG image fallback from raw HTML
-        function extractOgImage(h){
-          const m=h.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
-            ||h.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
-          return m?m[1]:'';
-        }
+        htmlForImage=html;
 
         const ldMatches=[...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
         for(const m of ldMatches){
@@ -2268,9 +2276,12 @@ async function fetchRecipeInfo(){
                 const ingredients=(recipe.recipeIngredient||[]).join('\n');
                 const name=recipe.name||'';
                 const imgUrl=extractSchemaImage(recipe.image)||extractOgImage(html);
+                const authorRaw=recipe.author;
+                const authorName=Array.isArray(authorRaw)?(authorRaw[0]&&authorRaw[0].name||authorRaw[0]||''):(authorRaw&&authorRaw.name||authorRaw||'');
 
                 if(cuisine) setField('f-cuisine',cuisine);
                 if(name&&!v('f-title')) setField('f-title',name);
+                if(authorName){ const byEl=document.getElementById('f-recipe-by'); if(byEl&&!byEl.value) byEl.value=String(authorName); }
                 if(imgUrl) setFormPoster(imgUrl);
                 let notes='';
                 if(timeStr) notes+=`⏱ ${timeStr}\n\n`;
@@ -2283,7 +2294,7 @@ async function fetchRecipeInfo(){
           }catch(_){}
         }
 
-        // Schema.org not found — try OG image alone before falling through to AI
+        // Schema.org not found — still set OG image if available
         const ogImg=extractOgImage(html);
         if(ogImg) setFormPoster(ogImg);
       }
@@ -2300,12 +2311,18 @@ async function fetchRecipeInfo(){
   if(url&&!recipeText){
     try{
       const jinaRes=await fetch('https://r.jina.ai/'+url,{signal:AbortSignal.timeout(15000)});
-      if(jinaRes.ok) recipeText=await jinaRes.text();
+      if(jinaRes.ok){
+        recipeText=await jinaRes.text();
+        // Try image from Jina markdown; fall back to OG image from HTML if we have it
+        const jinaImg=extractMarkdownImage(recipeText);
+        if(jinaImg) setFormPoster(jinaImg);
+        else if(htmlForImage){ const ogImg2=extractOgImage(htmlForImage); if(ogImg2) setFormPoster(ogImg2); }
+      }
     }catch(_){}
   }
   if(!recipeText){ setStatus('Could not fetch the recipe page. Try pasting the recipe text into the field above.'); return; }
 
-  const prompt=`From this recipe text, extract the following and respond with ONLY a valid JSON object — no prose, no markdown:\n- "cuisine": cuisine type (e.g. "Italian", "Asian", "Middle Eastern") — empty string if unknown\n- "totalTime": total prep + cook time as a human string (e.g. "45 min", "1 hr 20 min") — empty string if unknown\n- "ingredients": ingredients as a newline-separated list, keep it concise\n- "name": recipe name — empty string if not clear\n\nRecipe text (first 3000 chars):\n${recipeText.slice(0,3000)}`;
+  const prompt=`From this recipe text, extract the following and respond with ONLY a valid JSON object — no prose, no markdown:\n- "cuisine": cuisine type (e.g. "Italian", "Asian", "Middle Eastern") — empty string if unknown\n- "totalTime": total prep + cook time as a human string (e.g. "45 min", "1 hr 20 min") — empty string if unknown\n- "ingredients": ingredients as a newline-separated list, keep it concise\n- "name": recipe name — empty string if not clear\n- "author": recipe author or creator name (e.g. "Jamie Oliver", "Ottolenghi") — empty string if unknown\n\nRecipe text (first 3000 chars):\n${recipeText.slice(0,3000)}`;
 
   try{
     let rawText='';
@@ -2352,6 +2369,7 @@ async function fetchRecipeInfo(){
     const info=JSON.parse(cleaned);
     if(info.cuisine) setField('f-cuisine',info.cuisine);
     if(info.name&&!v('f-title')) setField('f-title',info.name);
+    if(info.author){ const byEl=document.getElementById('f-recipe-by'); if(byEl&&!byEl.value) byEl.value=info.author; }
     let notes='';
     if(info.totalTime) notes+=`⏱ ${info.totalTime}\n\n`;
     if(info.ingredients) notes+=`🧂 Ingredients:\n${info.ingredients}`;

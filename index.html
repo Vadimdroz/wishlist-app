@@ -454,6 +454,17 @@ async function pushToFirestore(){
   } catch(e){ console.error('Firestore sync error:', e); }
 }
 
+const SETTINGS_KEYS = ['places_key','claude_key','gemini_key','omdb_key','routes_key'];
+async function pushSettingsToFirestore(){
+  if (!currentUser || !_db) return;
+  const settings = {};
+  SETTINGS_KEYS.forEach(k => { const v = localStorage.getItem(k); if (v) settings[k] = v; });
+  try {
+    await _db.collection('users').doc(currentUser.uid)
+      .collection('data').doc('settings').set(settings);
+  } catch(e){ console.warn('Settings sync error:', e); }
+}
+
 function buildStarDisplay(value, label){
   const v = parseInt(value)||0;
   if(!v) return null;
@@ -2008,6 +2019,7 @@ window.savePlacesKey = function(){
   const k=(document.getElementById('mapsKeyInput')||{}).value||'';
   if(!k) return;
   localStorage.setItem('places_key',k);
+  pushSettingsToFirestore();
   const w=document.getElementById('mapsKeyWrap'); if(w) w.remove();
   setMapsStatus('API key saved — click Fetch to auto-fill.');
 };
@@ -2020,9 +2032,25 @@ async function fetchFromMaps(){
   const key = localStorage.getItem('places_key');
   if(!key){ setMapsStatus('Save a Google Places API key first.'); return; }
 
+  // Resolve shortened mobile URLs (maps.app.goo.gl or goo.gl) via allorigins
+  let resolvedUrl = url;
+  if(/goo\.gl\/|maps\.app\.goo\.gl/.test(url)){
+    setMapsStatus('Resolving short link…');
+    try{
+      const r = await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(url), {signal:AbortSignal.timeout(10000)});
+      const d = await r.json();
+      // allorigins returns the final URL in status.url
+      if(d.status && d.status.url) resolvedUrl = d.status.url;
+    } catch(_){}
+  }
+
   // Extract place name from URL path: /maps/place/Name/@...
-  const nameMatch = url.match(/\/maps\/place\/([^/@?#]+)/);
-  const query = nameMatch ? decodeURIComponent(nameMatch[1].replace(/\+/g,' ')) : '';
+  const nameMatch = resolvedUrl.match(/\/maps\/place\/([^/@?#]+)/);
+  // Also try ?q= param as fallback (some share formats use it)
+  const qMatch = !nameMatch && resolvedUrl.match(/[?&]q=([^&]+)/);
+  const query = nameMatch
+    ? decodeURIComponent(nameMatch[1].replace(/\+/g,' '))
+    : qMatch ? decodeURIComponent(qMatch[1].replace(/\+/g,' ')) : '';
   if(!query){ setMapsStatus('Could not read place name from URL. Try a full Maps link.'); return; }
 
   setMapsStatus('Searching…');
@@ -2096,6 +2124,7 @@ window.saveClaudeKey = function(){
   const k=(document.getElementById('claudeKeyInput')||{}).value||'';
   if(!k) return;
   localStorage.setItem('claude_key',k);
+  pushSettingsToFirestore();
   const w=document.getElementById('claudeKeyWrap'); if(w) w.remove();
   document.getElementById('itSmartStatus').textContent='API key saved — click Smart Fill.';
 };
@@ -2109,6 +2138,7 @@ window.saveAiKey = function(){
   } else {
     localStorage.setItem('gemini_key',k);
   }
+  pushSettingsToFirestore();
   const w=document.getElementById('recipeAiKeyWrap'); if(w) w.remove();
   document.getElementById('recipeSmartStatus').textContent='API key saved — click Smart Fill.';
 };
@@ -2735,8 +2765,19 @@ async function fetchFromMapsLocalTrip(){
   if(!url){ document.getElementById('ltMapsStatus').textContent='Paste a Google Maps link first.'; return; }
   const key=localStorage.getItem('places_key');
   if(!key){ document.getElementById('ltMapsStatus').textContent='Save a Google Places API key first.'; return; }
-  const nameMatch=url.match(/\/maps\/place\/([^/@?#]+)/);
-  const query=nameMatch?decodeURIComponent(nameMatch[1].replace(/\+/g,' ')):'';
+  // Resolve shortened mobile URLs
+  let resolvedUrl=url;
+  if(/goo\.gl\/|maps\.app\.goo\.gl/.test(url)){
+    document.getElementById('ltMapsStatus').textContent='Resolving short link…';
+    try{
+      const r=await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(url),{signal:AbortSignal.timeout(10000)});
+      const d=await r.json();
+      if(d.status&&d.status.url) resolvedUrl=d.status.url;
+    } catch(_){}
+  }
+  const nameMatch=resolvedUrl.match(/\/maps\/place\/([^/@?#]+)/);
+  const qMatch=!nameMatch&&resolvedUrl.match(/[?&]q=([^&]+)/);
+  const query=nameMatch?decodeURIComponent(nameMatch[1].replace(/\+/g,' ')):qMatch?decodeURIComponent(qMatch[1].replace(/\+/g,' ')):'';
   if(!query){ document.getElementById('ltMapsStatus').textContent='Could not read place name from URL.'; return; }
   document.getElementById('ltMapsStatus').textContent='Searching…';
   try{
@@ -2810,6 +2851,7 @@ async function calcCommute(){
 function saveOmdbKey(){
   const k=v('omdbKeyInput').trim(); if(!k) return;
   localStorage.setItem('omdb_key',k);
+  pushSettingsToFirestore();
   const w=document.getElementById('omdbKeyWrap'); if(w) w.remove();
 }
 
@@ -3182,6 +3224,15 @@ if (_auth) {
           await pushToFirestore();
         }
       } catch(e){ console.warn('Firestore load failed, using localStorage:', e); }
+      // Load synced API keys — remote wins so mobile gets keys saved on desktop
+      try {
+        const settingsSnap = await _db.collection('users').doc(user.uid)
+          .collection('data').doc('settings').get();
+        if (settingsSnap.exists) {
+          const s = settingsSnap.data();
+          SETTINGS_KEYS.forEach(k => { if (s[k]) localStorage.setItem(k, s[k]); });
+        }
+      } catch(e){ console.warn('Settings load failed:', e); }
       document.getElementById('authOverlay').style.display = 'none';
       renderContent();
       autoBackup();

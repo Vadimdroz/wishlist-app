@@ -2071,15 +2071,19 @@ async function fetchFromMaps(){
   const key = localStorage.getItem('places_key');
   if(!key){ setMapsStatus('Save a Google Places API key first.'); return; }
 
-  // Resolve shortened mobile URLs (maps.app.goo.gl or goo.gl) via allorigins
+  // Resolve shortened mobile URLs (maps.app.goo.gl or goo.gl)
   let resolvedUrl = url;
   if(/goo\.gl\/|maps\.app\.goo\.gl/.test(url)){
     setMapsStatus('Resolving short link…');
     try{
-      const r = await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(url), {signal:AbortSignal.timeout(10000)});
+      const r = await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(url), {signal:AbortSignal.timeout(12000)});
       const d = await r.json();
-      // allorigins returns the final URL in status.url
-      if(d.status && d.status.url) resolvedUrl = d.status.url;
+      const html = d.contents || '';
+      // Scan the returned HTML/JS for the actual Google Maps URL — the redirect
+      // page always embeds it even when JavaScript isn't executed
+      const mapsMatch = html.match(/https:\/\/(?:www\.)?google\.com\/maps\/[^"'\s<>\\]+/);
+      if(mapsMatch) resolvedUrl = mapsMatch[0].replace(/\\u003d/g,'=').replace(/\\\//g,'/');
+      else if(d.status && d.status.url && d.status.url !== url) resolvedUrl = d.status.url;
     } catch(_){}
   }
 
@@ -2087,10 +2091,13 @@ async function fetchFromMaps(){
   const nameMatch = resolvedUrl.match(/\/maps\/place\/([^/@?#]+)/);
   // Also try ?q= param as fallback (some share formats use it)
   const qMatch = !nameMatch && resolvedUrl.match(/[?&]q=([^&]+)/);
+  // Also try coordinates as last resort: /@lat,lng or @lat,lng
+  const coordMatch = !nameMatch && !qMatch && resolvedUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
   const query = nameMatch
     ? decodeURIComponent(nameMatch[1].replace(/\+/g,' '))
-    : qMatch ? decodeURIComponent(qMatch[1].replace(/\+/g,' ')) : '';
-  if(!query){ setMapsStatus('Could not read place name from URL. Try a full Maps link.'); return; }
+    : qMatch ? decodeURIComponent(qMatch[1].replace(/\+/g,' '))
+    : coordMatch ? `${coordMatch[1]},${coordMatch[2]}` : '';
+  if(!query){ setMapsStatus('Could not read place from URL. Try a full Maps link.'); return; }
 
   setMapsStatus('Searching…');
   try{
@@ -2798,15 +2805,19 @@ async function fetchFromMapsLocalTrip(){
   if(/goo\.gl\/|maps\.app\.goo\.gl/.test(url)){
     document.getElementById('ltMapsStatus').textContent='Resolving short link…';
     try{
-      const r=await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(url),{signal:AbortSignal.timeout(10000)});
+      const r=await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(url),{signal:AbortSignal.timeout(12000)});
       const d=await r.json();
-      if(d.status&&d.status.url) resolvedUrl=d.status.url;
+      const html=d.contents||'';
+      const mapsMatch=html.match(/https:\/\/(?:www\.)?google\.com\/maps\/[^"'\s<>\\]+/);
+      if(mapsMatch) resolvedUrl=mapsMatch[0].replace(/\\u003d/g,'=').replace(/\\\//g,'/');
+      else if(d.status&&d.status.url&&d.status.url!==url) resolvedUrl=d.status.url;
     } catch(_){}
   }
   const nameMatch=resolvedUrl.match(/\/maps\/place\/([^/@?#]+)/);
   const qMatch=!nameMatch&&resolvedUrl.match(/[?&]q=([^&]+)/);
-  const query=nameMatch?decodeURIComponent(nameMatch[1].replace(/\+/g,' ')):qMatch?decodeURIComponent(qMatch[1].replace(/\+/g,' ')):'';
-  if(!query){ document.getElementById('ltMapsStatus').textContent='Could not read place name from URL.'; return; }
+  const coordMatch=!nameMatch&&!qMatch&&resolvedUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  const query=nameMatch?decodeURIComponent(nameMatch[1].replace(/\+/g,' ')):qMatch?decodeURIComponent(qMatch[1].replace(/\+/g,' ')):coordMatch?`${coordMatch[1]},${coordMatch[2]}`:'';
+  if(!query){ document.getElementById('ltMapsStatus').textContent='Could not read place from URL.'; return; }
   document.getElementById('ltMapsStatus').textContent='Searching…';
   try{
     const res=await fetch('https://places.googleapis.com/v1/places:searchText',{

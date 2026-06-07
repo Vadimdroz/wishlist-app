@@ -2423,25 +2423,8 @@ async function fetchRecipeInfo(){
     let rawText='';
 
     if(geminiKey){
-      // Pick the best available model dynamically
-      let geminiModel='gemini-1.5-flash';
-      try{
-        const mRes=await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`);
-        if(mRes.ok){
-          const mData=await mRes.json();
-          const ids=(mData.models||[]).map(m=>m.name.replace('models/',''));
-          const pick=ids.find(m=>m.startsWith('gemini-2.5-flash'))||ids.find(m=>m.startsWith('gemini-2.0-flash-lite'))||ids.find(m=>m.startsWith('gemini-1.5-flash'))||ids.find(m=>m.includes('flash'))||ids[0];
-          if(pick) geminiModel=pick;
-        }
-      }catch(_){}
-      const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
-      });
-      if(!res.ok){ const errText=await res.text(); setStatus('Gemini error: HTTP '+res.status+' — '+errText.slice(0,120)); return; }
-      const data=await res.json();
-      rawText=data?.candidates?.[0]?.content?.parts?.[0]?.text||'';
+      try{ rawText=await callGemini(geminiKey,prompt); }
+      catch(e){ setStatus('Gemini error: '+e.message+' — try again in a moment.'); return; }
     } else {
       let modelId='claude-3-haiku-20240307';
       try{
@@ -2661,11 +2644,8 @@ async function stuffFetchProduct(){
         try{
           let rawText='';
           if(geminiKey){
-            let model='gemini-1.5-flash';
-            try{ const mr=await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`); if(mr.ok){ const md=await mr.json(); const ids=(md.models||[]).map(m=>m.name.replace('models/','')); const pick=ids.find(m=>m.startsWith('gemini-2.5-flash'))||ids.find(m=>m.startsWith('gemini-2.0-flash-lite'))||ids.find(m=>m.startsWith('gemini-1.5-flash'))||ids.find(m=>m.includes('flash'))||ids[0]; if(pick) model=pick; } }catch(_){}
-            const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
-            if(!res.ok){ const e=await res.text(); setStatus('Gemini error: '+res.status+' — '+e.slice(0,100)); return; }
-            const d=await res.json(); rawText=d?.candidates?.[0]?.content?.parts?.[0]?.text||'';
+            try{ rawText=await callGemini(geminiKey,prompt); }
+            catch(e){ setStatus('Gemini error: '+e.message+' — try again in a moment.'); return; }
           } else {
             let modelId='claude-3-haiku-20240307';
             try{ const mr=await fetch('https://api.anthropic.com/v1/models',{headers:{'x-api-key':claudeKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}}); if(mr.ok){ const md=await mr.json(); const ids=(md.data||[]).map(m=>m.id); modelId=ids.find(id=>id.includes('haiku'))||ids.find(id=>id.includes('sonnet'))||ids[0]||modelId; } }catch(_){}
@@ -2779,10 +2759,7 @@ async function addResearchOption(){
         try{
           let rawText='';
           if(geminiKey){
-            let model='gemini-1.5-flash';
-            try{ const mr=await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`); if(mr.ok){ const md=await mr.json(); const ids=(md.models||[]).map(m=>m.name.replace('models/','')); const pick=ids.find(m=>m.startsWith('gemini-2.5-flash'))||ids.find(m=>m.startsWith('gemini-2.0-flash-lite'))||ids.find(m=>m.startsWith('gemini-1.5-flash'))||ids.find(m=>m.includes('flash'))||ids[0]; if(pick) model=pick; } }catch(_){}
-            const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
-            if(res.ok){ const d=await res.json(); rawText=d?.candidates?.[0]?.content?.parts?.[0]?.text||''; }
+            try{ rawText=await callGemini(geminiKey,prompt); }catch(_){}
           } else {
             let modelId='claude-3-haiku-20240307';
             try{ const mr=await fetch('https://api.anthropic.com/v1/models',{headers:{'x-api-key':claudeKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}}); if(mr.ok){ const md=await mr.json(); const ids=(md.data||[]).map(m=>m.id); modelId=ids.find(id=>id.includes('haiku'))||ids.find(id=>id.includes('sonnet'))||ids[0]||modelId; } }catch(_){}
@@ -3076,6 +3053,43 @@ async function fetchTrailer(query){
 function setField(id, value){
   const el=document.getElementById(id);
   if(el&&value!==undefined&&value!==null) el.value=value;
+}
+
+// ─── Gemini helper ────────────────────────────────────────────────────────────
+// Picks the best available model, retries once with a lighter model on 503.
+async function callGemini(geminiKey, prompt){
+  // Build priority-ordered model list from the API, fall back to hardcoded list
+  let models=['gemini-1.5-flash'];
+  try{
+    const mr=await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`,{signal:AbortSignal.timeout(5000)});
+    if(mr.ok){
+      const md=await mr.json();
+      const ids=(md.models||[]).map(m=>m.name.replace('models/',''))
+        .filter(m=>m.includes('flash')||m.includes('pro'));
+      if(ids.length){
+        const ordered=[
+          ids.find(m=>m.startsWith('gemini-2.5-flash')),
+          ids.find(m=>m.startsWith('gemini-2.0-flash-lite')),
+          ids.find(m=>m.startsWith('gemini-1.5-flash')),
+          ids.find(m=>m.includes('flash')),
+          ids[0],
+        ].filter(Boolean);
+        models=[...new Set(ordered)];
+      }
+    }
+  }catch(_){}
+
+  const body=JSON.stringify({contents:[{parts:[{text:prompt}]}]});
+  for(let i=0;i<models.length;i++){
+    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${models[i]}:generateContent?key=${geminiKey}`,{
+      method:'POST',headers:{'Content-Type':'application/json'},body
+    });
+    if(res.status===503&&i<models.length-1) continue; // retry with next model
+    if(!res.ok){ const e=await res.text(); throw new Error('HTTP '+res.status+' — '+e.slice(0,120)); }
+    const d=await res.json();
+    return d?.candidates?.[0]?.content?.parts?.[0]?.text||'';
+  }
+  throw new Error('All Gemini models unavailable');
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────────

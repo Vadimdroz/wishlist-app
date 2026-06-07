@@ -161,6 +161,27 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .empty svg{width:48px;height:48px;margin-bottom:12px;opacity:.3;display:block;margin-left:auto;margin-right:auto}
 .empty p{font-size:.9rem}
 
+/* QUICK ADD FAB */
+.qa-fab{position:fixed;bottom:calc(68px + env(safe-area-inset-bottom));right:20px;z-index:60;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(99,102,241,.5);cursor:pointer;transition:.18s;-webkit-tap-highlight-color:transparent}
+.qa-fab:active{transform:scale(.9)}
+.qa-fab svg{width:24px;height:24px}
+.qa-input{width:100%;padding:14px 16px;font-size:1.05rem;background:var(--surface2);border:1.5px solid rgba(255,255,255,.12);border-radius:12px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box;transition:.15s;margin-bottom:12px}
+.qa-input:focus{border-color:rgba(99,102,241,.6)}
+.qa-status{font-size:.82rem;color:var(--muted);min-height:20px;margin-bottom:6px;text-align:center}
+.qa-results{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;max-height:240px;overflow-y:auto}
+.qa-result{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;cursor:pointer;transition:.15s}
+.qa-result:active{opacity:.7}
+.qa-result-poster{width:36px;height:52px;object-fit:cover;border-radius:6px;flex-shrink:0}
+.qa-result-poster-ph{width:36px;height:52px;border-radius:6px;background:var(--surface);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.1rem}
+.qa-result-info{flex:1;min-width:0}
+.qa-result-title{font-size:.9rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qa-result-sub{font-size:.74rem;color:var(--muted);margin-top:2px}
+.qa-result-badge{font-size:.66rem;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(99,102,241,.2);color:#a5b4fc;flex-shrink:0;white-space:nowrap}
+.qa-cats-label{font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.qa-cats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.qa-cat{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;cursor:pointer;font-size:.86rem;font-weight:600;transition:.15s;text-align:left;color:var(--text)}
+.qa-cat:active{opacity:.7}
+
 /* BOTTOM SHEET */
 .sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:none;align-items:flex-end}
 .sheet-overlay.open{display:flex}
@@ -315,6 +336,11 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
     Past
   </button>
 </nav>
+
+<!-- Quick Add FAB -->
+<button class="qa-fab" id="quickAddFab" onclick="openQuickAdd()" aria-label="Quick add">
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+</button>
 
 <!-- Sheet overlay -->
 <div class="sheet-overlay" id="sheetOverlay" onclick="overlayClick(event)">
@@ -1397,11 +1423,12 @@ function buildForm(body, c, item){
     mapsRow.innerHTML=`<label>Google Maps Link</label><div style="display:flex;gap:8px"><input class="form-input" id="f-maps" value="${esc(item&&item.mapsLink||'')}" placeholder="Paste Google Maps URL…" style="flex:1"/><button class="smart-btn" type="button" id="mapsSmartBtn" style="margin:0;width:auto;padding:8px 14px;white-space:nowrap">🗺️ Fetch</button></div>`;
     body.appendChild(mapsRow);
     const mss = el('div','smart-status'); mss.id='mapsSmartStatus'; body.appendChild(mss);
-    if(!localStorage.getItem('places_key')){
-      const kw = el('div'); kw.id='mapsKeyWrap';
-      kw.innerHTML=`<div class="form-row" style="margin-top:-4px"><label style="color:var(--muted);font-size:.78rem">Paste a Google Places API key to enable auto-fill</label><div style="display:flex;gap:8px"><input class="form-input" id="mapsKeyInput" placeholder="AIza…" style="flex:1"/><button class="poster-url-btn" type="button" onclick="savePlacesKey()">Save key</button></div></div>`;
-      body.appendChild(kw);
-    }
+    { const kw = el('div'); kw.id='mapsKeyWrap';
+      const hasKey = localStorage.getItem('places_key');
+      kw.innerHTML = hasKey
+        ? `<div class="form-row" style="margin-top:-4px"><label style="color:var(--muted);font-size:.78rem">Places API key saved — <button type="button" onclick="showPlacesKeyInput('mapsKeyWrap','mapsKeyInput')" style="background:none;border:none;color:#a5b4fc;font-size:.78rem;cursor:pointer;padding:0;text-decoration:underline">change</button></label></div>`
+        : `<div class="form-row" style="margin-top:-4px"><label style="color:var(--muted);font-size:.78rem">Paste a Google Places API key to enable auto-fill</label><div style="display:flex;gap:8px"><input class="form-input" id="mapsKeyInput" placeholder="AIza…" style="flex:1"/><button class="poster-url-btn" type="button" onclick="savePlacesKey()">Save key</button></div></div>`;
+      body.appendChild(kw); }
     // wire up after appending so getElementById finds the button
     setTimeout(()=>{ const b=document.getElementById('mapsSmartBtn'); if(b) b.onclick=fetchFromMaps; },0);
   }
@@ -1526,11 +1553,12 @@ function buildForm(body, c, item){
     ltMapsRow.innerHTML=`<label>Google Maps Link</label><div style="display:flex;gap:8px"><input class="form-input" id="f-maps" value="${esc(item&&item.mapsLink||'')}" placeholder="Paste Google Maps URL…" style="flex:1"/><button class="smart-btn" type="button" id="ltMapsBtn" style="margin:0;width:auto;padding:8px 14px;white-space:nowrap">🗺️ Fetch</button></div>`;
     body.appendChild(ltMapsRow);
     const ltSt = el('div','smart-status'); ltSt.id='ltMapsStatus'; body.appendChild(ltSt);
-    if(!localStorage.getItem('places_key')){
-      const kw=el('div'); kw.id='ltKeyWrap';
-      kw.innerHTML=`<div class="form-row" style="margin-top:-4px"><label style="color:var(--muted);font-size:.78rem">Google Places API key needed to fetch data</label><div style="display:flex;gap:8px"><input class="form-input" id="ltKeyInput" placeholder="AIza…" style="flex:1"/><button class="poster-url-btn" type="button" onclick="savePlacesKey()">Save key</button></div></div>`;
-      body.appendChild(kw);
-    }
+    { const kw=el('div'); kw.id='ltKeyWrap';
+      const hasKey = localStorage.getItem('places_key');
+      kw.innerHTML = hasKey
+        ? `<div class="form-row" style="margin-top:-4px"><label style="color:var(--muted);font-size:.78rem">Places API key saved — <button type="button" onclick="showPlacesKeyInput('ltKeyWrap','ltKeyInput')" style="background:none;border:none;color:#a5b4fc;font-size:.78rem;cursor:pointer;padding:0;text-decoration:underline">change</button></label></div>`
+        : `<div class="form-row" style="margin-top:-4px"><label style="color:var(--muted);font-size:.78rem">Google Places API key needed to fetch data</label><div style="display:flex;gap:8px"><input class="form-input" id="ltKeyInput" placeholder="AIza…" style="flex:1"/><button class="poster-url-btn" type="button" onclick="savePlacesKey()">Save key</button></div></div>`;
+      body.appendChild(kw); }
     setTimeout(()=>{ const b=document.getElementById('ltMapsBtn'); if(b) b.onclick=fetchFromMapsLocalTrip; },0);
 
     // Type picker
@@ -2015,12 +2043,20 @@ function setSmartStatus(msg){ const e=document.getElementById('smartStatus'); if
 function setMapsStatus(msg){ const e=document.getElementById('mapsSmartStatus'); if(e) e.textContent=msg; }
 
 // ── Google Places ─────────────────────────────────────────────────────────────
+window.showPlacesKeyInput = function(wrapId, inputId){
+  const wrap = document.getElementById(wrapId);
+  if(!wrap) return;
+  wrap.querySelector('.form-row').innerHTML=`<label style="color:var(--muted);font-size:.78rem">Paste new Google Places API key</label><div style="display:flex;gap:8px"><input class="form-input" id="${inputId}" placeholder="AIza…" style="flex:1"/><button class="poster-url-btn" type="button" onclick="savePlacesKey()">Save key</button></div>`;
+  setTimeout(()=>{ const i=document.getElementById(inputId); if(i) i.focus(); },50);
+};
+
 window.savePlacesKey = function(){
-  const k=(document.getElementById('mapsKeyInput')||{}).value||'';
+  const k=(document.getElementById('mapsKeyInput')||document.getElementById('ltKeyInput')||{}).value||'';
   if(!k) return;
   localStorage.setItem('places_key',k);
   pushSettingsToFirestore();
-  const w=document.getElementById('mapsKeyWrap'); if(w) w.remove();
+  const mw=document.getElementById('mapsKeyWrap'); if(mw) mw.querySelector('.form-row').innerHTML='<label style="color:var(--muted);font-size:.78rem">Places API key saved — <button type="button" onclick="showPlacesKeyInput(\'mapsKeyWrap\',\'mapsKeyInput\')" style="background:none;border:none;color:#a5b4fc;font-size:.78rem;cursor:pointer;padding:0;text-decoration:underline">change</button></label>';
+  const lw=document.getElementById('ltKeyWrap'); if(lw) lw.querySelector('.form-row').innerHTML='<label style="color:var(--muted);font-size:.78rem">Places API key saved — <button type="button" onclick="showPlacesKeyInput(\'ltKeyWrap\',\'ltKeyInput\')" style="background:none;border:none;color:#a5b4fc;font-size:.78rem;cursor:pointer;padding:0;text-decoration:underline">change</button></label>';
   setMapsStatus('API key saved — click Fetch to auto-fill.');
 };
 
@@ -3025,6 +3061,169 @@ async function fetchTrailer(query){
 function setField(id, value){
   const el=document.getElementById(id);
   if(el&&value!==undefined&&value!==null) el.value=value;
+}
+
+// ─── Quick Add ────────────────────────────────────────────────────────────────
+let _qaTimer;
+
+function openQuickAdd(){
+  document.getElementById('sheetEmoji').textContent = '⚡';
+  document.getElementById('sheetTitle').textContent = 'Quick Add';
+  document.getElementById('delBtn').style.display = 'none';
+
+  const body = document.getElementById('sheetBody');
+  body.innerHTML = '';
+
+  const inp = document.createElement('input');
+  inp.className = 'qa-input'; inp.id = 'qaInput';
+  inp.placeholder = 'Movie, book, restaurant, trip…';
+  inp.autocomplete = 'off'; inp.spellcheck = false;
+  body.appendChild(inp);
+
+  const statusEl = document.createElement('div');
+  statusEl.className = 'qa-status'; statusEl.id = 'qaStatus';
+  body.appendChild(statusEl);
+
+  const resultsEl = document.createElement('div');
+  resultsEl.className = 'qa-results'; resultsEl.id = 'qaResults';
+  body.appendChild(resultsEl);
+
+  const catsLabel = document.createElement('div');
+  catsLabel.className = 'qa-cats-label'; catsLabel.textContent = 'Or pick a category';
+  body.appendChild(catsLabel);
+
+  const catsEl = document.createElement('div');
+  catsEl.className = 'qa-cats';
+  CATS.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'qa-cat';
+    btn.innerHTML = `<span>${c.emoji}</span><span>${c.label}</span>`;
+    btn.onclick = () => quickPickCategory(c.id);
+    catsEl.appendChild(btn);
+  });
+  body.appendChild(catsEl);
+
+  const actions = document.getElementById('sheetActions');
+  actions.innerHTML = '';
+  const cancelBtn = el('button','sheet-cancel');
+  cancelBtn.textContent = 'Cancel'; cancelBtn.onclick = closeSheet;
+  actions.appendChild(cancelBtn);
+
+  openSheet();
+  setTimeout(() => inp.focus(), 80);
+
+  inp.addEventListener('input', () => {
+    clearTimeout(_qaTimer);
+    const q = inp.value.trim();
+    if (!q) { resultsEl.innerHTML = ''; statusEl.textContent = ''; return; }
+    statusEl.textContent = 'Searching…';
+    _qaTimer = setTimeout(() => quickSearch(q), 420);
+  });
+}
+
+async function quickSearch(q){
+  const omdbKey = localStorage.getItem('omdb_key') || OMDB_KEY_DEFAULT;
+  const [movRes, tvRes, bookRes] = await Promise.allSettled([
+    fetch(`https://www.omdbapi.com/?s=${encodeURIComponent(q)}&type=movie&apikey=${omdbKey}`).then(r=>r.json()),
+    fetch(`https://www.omdbapi.com/?s=${encodeURIComponent(q)}&type=series&apikey=${omdbKey}`).then(r=>r.json()),
+    fetch(`https://openlibrary.org/search.json?title=${encodeURIComponent(q)}&limit=4&fields=key,title,author_name,first_publish_year,cover_i`).then(r=>r.json()),
+  ]);
+
+  const results = [];
+  if (movRes.status==='fulfilled' && movRes.value.Response==='True')
+    (movRes.value.Search||[]).slice(0,3).forEach(r => results.push({...r, _cat:'movies', _badge:'🎬 Movie'}));
+  if (tvRes.status==='fulfilled' && tvRes.value.Response==='True')
+    (tvRes.value.Search||[]).slice(0,3).forEach(r => results.push({...r, _cat:'tv-shows', _badge:'📺 TV'}));
+  if (bookRes.status==='fulfilled')
+    (bookRes.value.docs||[]).slice(0,3).forEach(r => results.push({
+      Title: r.title, Year: r.first_publish_year,
+      Poster: r.cover_i ? `https://covers.openlibrary.org/b/id/${r.cover_i}-M.jpg` : 'N/A',
+      _author: (r.author_name||[])[0]||'', _cat:'books', _badge:'📚 Book'
+    }));
+
+  const statusEl = document.getElementById('qaStatus');
+  const resultsEl = document.getElementById('qaResults');
+  if (!statusEl || !resultsEl) return;
+
+  if (!results.length) {
+    statusEl.textContent = 'No matches — pick a category below to add manually.';
+    resultsEl.innerHTML = '';
+    return;
+  }
+  statusEl.textContent = '';
+  resultsEl.innerHTML = '';
+  results.forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'qa-result';
+    const hasPoster = r.Poster && r.Poster !== 'N/A';
+    const posterHtml = hasPoster
+      ? `<img class="qa-result-poster" src="${esc(r.Poster)}" onerror="this.style.display='none'">`
+      : `<div class="qa-result-poster-ph">${r._cat==='movies'?'🎬':r._cat==='tv-shows'?'📺':'📚'}</div>`;
+    row.innerHTML = `${posterHtml}
+      <div class="qa-result-info">
+        <div class="qa-result-title">${esc(r.Title||'')}</div>
+        <div class="qa-result-sub">${r._author?esc(r._author)+' · ':''}${r.Year||''}</div>
+      </div>
+      <span class="qa-result-badge">${r._badge}</span>`;
+    row.onclick = () => quickSaveResult(r);
+    resultsEl.appendChild(row);
+  });
+}
+
+async function quickSaveResult(r){
+  const statusEl = document.getElementById('qaStatus');
+  if (statusEl) statusEl.textContent = 'Saving…';
+
+  if (r._cat === 'books') {
+    const newItem = {
+      id: Date.now().toString(), cat:'books', status:'future',
+      title: r.Title, year: r.Year ? String(r.Year) : '',
+      poster: r.Poster && r.Poster !== 'N/A' ? r.Poster : '',
+      author: r._author || '',
+    };
+    items.unshift(newItem); save();
+    closeSheet(); catId = 'books'; renderContent();
+    return;
+  }
+
+  // Movies / TV — fetch full OMDB detail
+  const omdbKey = localStorage.getItem('omdb_key') || OMDB_KEY_DEFAULT;
+  try {
+    const res = await fetch(`https://www.omdbapi.com/?i=${r.imdbID}&apikey=${omdbKey}`);
+    const d = await res.json();
+    const newItem = {
+      id: Date.now().toString(), cat: r._cat, status:'future',
+      title: d.Title||r.Title, year: d.Year||'',
+      poster: d.Poster&&d.Poster!=='N/A' ? d.Poster : '',
+      director: d.Director&&d.Director!=='N/A' ? d.Director : '',
+      actors: d.Actors&&d.Actors!=='N/A' ? d.Actors : '',
+      language: d.Language&&d.Language!=='N/A' ? d.Language : '',
+      imdbRating: d.imdbRating&&d.imdbRating!=='N/A' ? d.imdbRating : '',
+      metacritic: d.Metascore&&d.Metascore!=='N/A' ? d.Metascore : '',
+      synopsis: d.Plot&&d.Plot!=='N/A' ? d.Plot : '',
+    };
+    items.unshift(newItem); save();
+    closeSheet(); catId = r._cat; renderContent();
+  } catch(e) {
+    const newItem = {
+      id: Date.now().toString(), cat: r._cat, status:'future',
+      title: r.Title, year: r.Year||'',
+      poster: r.Poster&&r.Poster!=='N/A' ? r.Poster : '',
+    };
+    items.unshift(newItem); save();
+    closeSheet(); catId = r._cat; renderContent();
+  }
+}
+
+function quickPickCategory(cId){
+  const titleVal = (document.getElementById('qaInput')||{}).value||'';
+  closeSheet();
+  catId = cId;
+  openForm(null);
+  if (titleVal) {
+    const titleInput = document.getElementById('f-title');
+    if (titleInput) titleInput.value = titleVal;
+  }
 }
 
 // ─── Sheet open/close ─────────────────────────────────────────────────────────

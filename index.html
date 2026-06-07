@@ -2702,13 +2702,16 @@ async function stuffFetchProduct(){
     setFormPoster(image);
     setStatus('✓ Done — review and edit fields.');
   } else if(title){
-    setStatus('No image found — generating one…');
-    const aiPr=encodeURIComponent('product photo of '+title+', clean white background, studio lighting, high quality');
-    setFormPoster(`https://image.pollinations.ai/prompt/${aiPr}?width=400&height=400&seed=${Date.now()}`);
+    setStatus('No image found — finding placeholder…');
+    // Keyword-matched placeholder via LoremFlickr (free, CORS-open)
+    const kw = title.toLowerCase().replace(/[^a-z0-9 ]/g,' ')
+      .split(/\s+/).filter(Boolean).slice(0,3).join(',');
+    let seed=0; for(const c of title) seed=(seed*31+c.charCodeAt(0))&0x7fffffff;
+    setFormPoster(`https://loremflickr.com/400/400/${kw}?lock=${seed}`);
     const psInner=document.getElementById('posterSection');
     const pImg=psInner?.querySelector('img');
     if(pImg){
-      pImg.onload=()=>setStatus('✓ Done — AI-generated image used (swap it if you have a better one).');
+      pImg.onload=()=>setStatus('✓ Done — placeholder image used (swap it if you have a better one).');
       pImg.onerror=()=>{ psInner._showUploadArea?.(); setStatus('✓ Done — no image found; tap above to upload.'); };
     }
   } else {

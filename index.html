@@ -2465,7 +2465,7 @@ async function fetchRecipeInfo(){
   }catch(e){ setStatus('Error: '+e.message); }
 }
 
-function stripHtml(s){ return (s||'').replace(/<[^>]+>/g,' ').replace(/&[a-z]+;/gi,' ').replace(/\s+/g,' ').trim(); }
+function stripHtml(s){ return (s||'').replace(/<[^>]*>/g,' ').replace(/\b[a-z][a-z0-9]*>/gi,' ').replace(/&[a-z#0-9]+;/gi,' ').replace(/\s+/g,' ').trim(); }
 
 // Strip e-commerce page-title noise: "Product Name - Best Price | Store"
 function cleanProductTitle(t){
@@ -2658,7 +2658,8 @@ async function stuffFetchProduct(){
           while((m=re.exec(pageText))!==null){ if(!skip.test(m[1])){ image=m[1]; break; } }
         }
 
-        const prompt=`From this product page text, extract the following and respond with ONLY a valid JSON object — no prose, no markdown, no HTML tags:\n- "name": the short product name only (e.g. "Xiaomi Mi Scooter Pro 2") — NOT the full page title with store name or SEO text, max 60 chars\n- "price": price with currency symbol as shown (e.g. "$49.99", "₪199") — empty string if not found\n- "pros": 2–4 key features as a plain-text comma-separated list — NO HTML tags, no angle brackets, plain text only\n- "description": one plain-text sentence describing the product — no HTML\n\nProduct page text (first 3000 chars):\n${pageText.slice(0,3000)}`;
+        const cleanPageText=stripHtml(pageText);
+        const prompt=`From this product page text, extract the following and respond with ONLY a valid JSON object — no prose, no markdown, no HTML tags:\n- "name": the short product name only (e.g. "Xiaomi Mi Scooter Pro 2") — NOT the full page title with store name or SEO text, max 60 chars\n- "price": price with currency symbol as shown (e.g. "$49.99", "₪199") — empty string if not found\n- "pros": 2–4 key features as a plain-text comma-separated list — NO HTML tags, plain text only\n- "description": one plain-text sentence describing the product — no HTML\n\nProduct page text (first 3000 chars):\n${cleanPageText.slice(0,3000)}`;
 
         try{
           let rawText='';
@@ -2687,9 +2688,9 @@ async function stuffFetchProduct(){
   }
 
   // Apply whatever we found
-  if(title&&!document.getElementById('f-title').value) setField('f-title',title);
+  if(title&&!document.getElementById('f-title').value) setField('f-title',cleanProductTitle(title));
   if(price) setField('f-price',price);
-  if(desc){ const prosEl=document.getElementById('f-pros'); if(prosEl&&!prosEl.value) prosEl.value=desc; }
+  if(desc){ const prosEl=document.getElementById('f-pros'); if(prosEl&&!prosEl.value) prosEl.value=stripHtml(desc); }
 
   if(image){
     setFormPoster(image);

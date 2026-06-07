@@ -2671,13 +2671,12 @@ async function stuffFetchProduct(){
           let rawText='';
           if(geminiKey){
             try{ rawText=await callGemini(geminiKey,prompt); }
-            catch(e){ setStatus('Gemini error: '+e.message+' — try again in a moment.'); return; }
+            catch(e){ setStatus('AI unavailable — generating image from title…'); }
           } else {
             let modelId='claude-3-haiku-20240307';
             try{ const mr=await fetch('https://api.anthropic.com/v1/models',{headers:{'x-api-key':claudeKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}}); if(mr.ok){ const md=await mr.json(); const ids=(md.data||[]).map(m=>m.id); modelId=ids.find(id=>id.includes('haiku'))||ids.find(id=>id.includes('sonnet'))||ids[0]||modelId; } }catch(_){}
             const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':claudeKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:modelId,max_tokens:400,messages:[{role:'user',content:prompt}]})});
-            if(!res.ok){ setStatus('Claude error: '+res.status); return; }
-            const d=await res.json(); rawText=(d.content&&d.content[0]&&d.content[0].text)||'';
+            if(res.ok){ const d=await res.json(); rawText=(d.content&&d.content[0]&&d.content[0].text)||''; }
           }
           if(rawText){
             let cleaned=rawText.trim();

@@ -2410,13 +2410,13 @@ async function fetchRecipeInfo(){
 
     if(geminiKey){
       // Pick the best available model dynamically
-      let geminiModel='gemini-2.0-flash';
+      let geminiModel='gemini-1.5-flash';
       try{
         const mRes=await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`);
         if(mRes.ok){
           const mData=await mRes.json();
           const ids=(mData.models||[]).map(m=>m.name.replace('models/',''));
-          const pick=ids.find(m=>m.startsWith('gemini-2.0-flash'))||ids.find(m=>m.startsWith('gemini-1.5-flash'))||ids.find(m=>m.includes('flash'))||ids[0];
+          const pick=ids.find(m=>m.startsWith('gemini-2.5-flash'))||ids.find(m=>m.startsWith('gemini-2.0-flash-lite'))||ids.find(m=>m.startsWith('gemini-1.5-flash'))||ids.find(m=>m.includes('flash'))||ids[0];
           if(pick) geminiModel=pick;
         }
       }catch(_){}
@@ -2646,8 +2646,8 @@ async function stuffFetchProduct(){
         try{
           let rawText='';
           if(geminiKey){
-            let model='gemini-2.0-flash';
-            try{ const mr=await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`); if(mr.ok){ const md=await mr.json(); const ids=(md.models||[]).map(m=>m.name.replace('models/','')); const pick=ids.find(m=>m.startsWith('gemini-2.0-flash'))||ids.find(m=>m.startsWith('gemini-1.5-flash'))||ids.find(m=>m.includes('flash'))||ids[0]; if(pick) model=pick; } }catch(_){}
+            let model='gemini-1.5-flash';
+            try{ const mr=await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`); if(mr.ok){ const md=await mr.json(); const ids=(md.models||[]).map(m=>m.name.replace('models/','')); const pick=ids.find(m=>m.startsWith('gemini-2.5-flash'))||ids.find(m=>m.startsWith('gemini-2.0-flash-lite'))||ids.find(m=>m.startsWith('gemini-1.5-flash'))||ids.find(m=>m.includes('flash'))||ids[0]; if(pick) model=pick; } }catch(_){}
             const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
             if(!res.ok){ const e=await res.text(); setStatus('Gemini error: '+res.status+' — '+e.slice(0,100)); return; }
             const d=await res.json(); rawText=d?.candidates?.[0]?.content?.parts?.[0]?.text||'';
@@ -2764,8 +2764,8 @@ async function addResearchOption(){
         try{
           let rawText='';
           if(geminiKey){
-            let model='gemini-2.0-flash';
-            try{ const mr=await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`); if(mr.ok){ const md=await mr.json(); const ids=(md.models||[]).map(m=>m.name.replace('models/','')); const pick=ids.find(m=>m.startsWith('gemini-2.0-flash'))||ids.find(m=>m.startsWith('gemini-1.5-flash'))||ids.find(m=>m.includes('flash'))||ids[0]; if(pick) model=pick; } }catch(_){}
+            let model='gemini-1.5-flash';
+            try{ const mr=await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`); if(mr.ok){ const md=await mr.json(); const ids=(md.models||[]).map(m=>m.name.replace('models/','')); const pick=ids.find(m=>m.startsWith('gemini-2.5-flash'))||ids.find(m=>m.startsWith('gemini-2.0-flash-lite'))||ids.find(m=>m.startsWith('gemini-1.5-flash'))||ids.find(m=>m.includes('flash'))||ids[0]; if(pick) model=pick; } }catch(_){}
             const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
             if(res.ok){ const d=await res.json(); rawText=d?.candidates?.[0]?.content?.parts?.[0]?.text||''; }
           } else {

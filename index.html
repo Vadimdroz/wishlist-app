@@ -2465,6 +2465,17 @@ async function fetchRecipeInfo(){
   }catch(e){ setStatus('Error: '+e.message); }
 }
 
+function stripHtml(s){ return (s||'').replace(/<[^>]+>/g,' ').replace(/&[a-z]+;/gi,' ').replace(/\s+/g,' ').trim(); }
+
+// Strip e-commerce page-title noise: "Product Name - Best Price | Store"
+function cleanProductTitle(t){
+  if(!t) return '';
+  // Remove everything after the first separator that looks like store/SEO noise
+  const parts = t.split(/\s+[-|–—·•]\s+/);
+  if(parts.length > 1 && parts[0].length >= 4 && parts[0].length <= 80) return parts[0].trim();
+  return t.slice(0,80).trim();
+}
+
 function parseShopifyProduct(d){
   if(!d||!d.product) return null;
   const p=d.product;
@@ -2507,9 +2518,9 @@ async function fetchProductInfo(url){
       const ml=await mlRes.json();
       if(ml.status==='success'&&ml.data){
         const d=ml.data;
-        const title=(d.title||'').slice(0,120).trim();
+        const title=cleanProductTitle(stripHtml(d.title||''));
         const image=d.image?.url||d.screenshot?.url||'';
-        const desc=(d.description||'').slice(0,400).trim();
+        const desc=stripHtml(d.description||'').slice(0,400);
         const price=d.price||'';
         if(title||image) return {title,image,desc,price};
       }
@@ -2521,9 +2532,9 @@ async function fetchProductInfo(url){
     const jlRes=await fetch('https://jsonlink.io/api/extract?url='+encodeURIComponent(url),{signal:AbortSignal.timeout(10000)});
     if(jlRes.ok){
       const jl=await jlRes.json();
-      const title=(jl.title||'').slice(0,120).trim();
+      const title=cleanProductTitle(stripHtml(jl.title||''));
       const image=(jl.images&&jl.images[0])||'';
-      const desc=(jl.description||'').slice(0,400).trim();
+      const desc=stripHtml(jl.description||'').slice(0,400);
       if(title||image) return {title,image,desc,price:''};
     }
   }catch(_){}
@@ -2647,7 +2658,7 @@ async function stuffFetchProduct(){
           while((m=re.exec(pageText))!==null){ if(!skip.test(m[1])){ image=m[1]; break; } }
         }
 
-        const prompt=`From this product page text, extract the following and respond with ONLY a valid JSON object — no prose, no markdown:\n- "name": product name (concise) — empty string if unknown\n- "price": price with currency symbol as shown (e.g. "$49.99", "₪199") — empty string if not found\n- "pros": 2–4 key features or selling points as a short comma-separated list — empty string if unknown\n- "description": one-sentence description of what the product is — empty string if unknown\n\nProduct page text (first 3000 chars):\n${pageText.slice(0,3000)}`;
+        const prompt=`From this product page text, extract the following and respond with ONLY a valid JSON object — no prose, no markdown, no HTML tags:\n- "name": the short product name only (e.g. "Xiaomi Mi Scooter Pro 2") — NOT the full page title with store name or SEO text, max 60 chars\n- "price": price with currency symbol as shown (e.g. "$49.99", "₪199") — empty string if not found\n- "pros": 2–4 key features as a plain-text comma-separated list — NO HTML tags, no angle brackets, plain text only\n- "description": one plain-text sentence describing the product — no HTML\n\nProduct page text (first 3000 chars):\n${pageText.slice(0,3000)}`;
 
         try{
           let rawText='';
@@ -2666,9 +2677,9 @@ async function stuffFetchProduct(){
             if(cleaned.startsWith('```')) cleaned=cleaned.replace(/^```[a-z]*\n?/i,'').replace(/```\s*$/,'').trim();
             if(!cleaned.startsWith('{')){ const match=rawText.match(/\{[\s\S]*\}/); if(match) cleaned=match[0]; }
             const ai=JSON.parse(cleaned);
-            if(ai.name&&!title) title=ai.name;
+            if(ai.name&&!title) title=cleanProductTitle(ai.name);
             if(ai.price&&!price) price=ai.price;
-            if(!desc) desc=ai.pros||ai.description||'';
+            if(!desc) desc=stripHtml(ai.pros||ai.description||'');
           }
         }catch(_){}
       }

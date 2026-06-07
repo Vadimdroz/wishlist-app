@@ -313,6 +313,9 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
       Import
       <input type="file" accept=".json" onchange="importJSON(event)" style="display:none"/>
     </label>
+    <button onclick="openSettings()" title="API Keys & Settings" style="display:flex;align-items:center;padding:5px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:none;color:#6b6b8a;cursor:pointer">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    </button>
     <button id="navSignOutBtn" onclick="doSignOut()" title="Sign out" style="display:none;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:none;color:#6b6b8a;font-size:.75rem;font-weight:600;cursor:pointer">
       <img id="navUserAvatar" src="" alt="" style="width:20px;height:20px;border-radius:50%;display:none"/>
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
@@ -3062,6 +3065,62 @@ function setField(id, value){
   const el=document.getElementById(id);
   if(el&&value!==undefined&&value!==null) el.value=value;
 }
+
+// ─── Settings ─────────────────────────────────────────────────────────────────
+function openSettings(){
+  document.getElementById('sheetEmoji').textContent = '⚙️';
+  document.getElementById('sheetTitle').textContent = 'API Keys';
+  document.getElementById('delBtn').style.display = 'none';
+
+  const body = document.getElementById('sheetBody');
+  body.innerHTML = '';
+
+  const keys = [
+    { id:'places_key',  label:'Google Places',  placeholder:'AIza…',   hint:'Used for restaurant & trip auto-fill' },
+    { id:'claude_key',  label:'Claude (Anthropic)', placeholder:'sk-ant-…', hint:'Used for trip info & Smart Fill' },
+    { id:'gemini_key',  label:'Gemini (Google)', placeholder:'AIza… or AQ.…', hint:'Used for Smart Fill & product info' },
+    { id:'omdb_key',    label:'OMDB',            placeholder:'8-char key', hint:'Used for movies & TV metadata' },
+  ];
+
+  keys.forEach(k => {
+    const current = localStorage.getItem(k.id) || '';
+    const masked = current ? current.slice(0,6) + '••••••••••••' : '';
+    const row = document.createElement('div');
+    row.style.cssText = 'margin-bottom:18px';
+    row.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <label style="font-size:.88rem;font-weight:600">${k.label}</label>
+        ${current ? `<span style="font-size:.74rem;color:var(--muted)">${masked}</span>` : '<span style="font-size:.74rem;color:#f59e0b">Not set</span>'}
+      </div>
+      <div style="font-size:.75rem;color:var(--muted);margin-bottom:6px">${k.hint}</div>
+      <div style="display:flex;gap:8px">
+        <input class="form-input" id="skey_${k.id}" placeholder="${k.placeholder}" style="flex:1;font-size:.85rem" autocomplete="off" spellcheck="false"/>
+        <button class="poster-url-btn" type="button" onclick="saveSettingsKey('${k.id}')">Save</button>
+      </div>
+      <div id="skey_${k.id}_status" style="font-size:.75rem;color:#10b981;min-height:16px;margin-top:4px"></div>
+    `;
+    body.appendChild(row);
+  });
+
+  const actions = document.getElementById('sheetActions');
+  actions.innerHTML = '';
+  const closeBtn = el('button','sheet-cancel');
+  closeBtn.textContent = 'Close'; closeBtn.onclick = closeSheet;
+  actions.appendChild(closeBtn);
+
+  openSheet();
+}
+
+window.saveSettingsKey = function(keyId){
+  const input = document.getElementById('skey_'+keyId);
+  const statusEl = document.getElementById('skey_'+keyId+'_status');
+  const val = (input||{}).value.trim();
+  if(!val){ if(statusEl) statusEl.textContent=''; return; }
+  localStorage.setItem(keyId, val);
+  pushSettingsToFirestore();
+  if(input) input.value = '';
+  if(statusEl){ statusEl.textContent = '✓ Saved & synced'; setTimeout(()=>{ statusEl.textContent=''; openSettings(); },1200); }
+};
 
 // ─── Quick Add ────────────────────────────────────────────────────────────────
 let _qaTimer;

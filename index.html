@@ -2073,30 +2073,31 @@ async function fetchFromMaps(){
 
   // Resolve shortened mobile URLs (maps.app.goo.gl or goo.gl)
   let resolvedUrl = url;
+  let shortLinkName = '';
   if(/goo\.gl\/|maps\.app\.goo\.gl/.test(url)){
     setMapsStatus('Resolving short link…');
+    // Jina follows JS redirects and returns the place name in its first heading
     try{
-      const r = await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(url), {signal:AbortSignal.timeout(12000)});
-      const d = await r.json();
-      const html = d.contents || '';
-      // Scan the returned HTML/JS for the actual Google Maps URL — the redirect
-      // page always embeds it even when JavaScript isn't executed
-      const mapsMatch = html.match(/https:\/\/(?:www\.)?google\.com\/maps\/[^"'\s<>\\]+/);
-      if(mapsMatch) resolvedUrl = mapsMatch[0].replace(/\\u003d/g,'=').replace(/\\\//g,'/');
-      else if(d.status && d.status.url && d.status.url !== url) resolvedUrl = d.status.url;
+      const jinaRes = await fetch('https://r.jina.ai/'+url, {signal:AbortSignal.timeout(15000)});
+      if(jinaRes.ok){
+        const md = await jinaRes.text();
+        const headingMatch = md.match(/^#\s+(.+?)(?:\s+-\s+Google Maps)?\s*$/m);
+        if(headingMatch) shortLinkName = headingMatch[1].trim();
+        // Also try to grab the full Maps URL if Jina embedded it
+        const mapsMatch = md.match(/https:\/\/(?:www\.)?google\.com\/maps\/place\/[^\s"')]+/);
+        if(mapsMatch) resolvedUrl = mapsMatch[0];
+      }
     } catch(_){}
   }
 
   // Extract place name from URL path: /maps/place/Name/@...
   const nameMatch = resolvedUrl.match(/\/maps\/place\/([^/@?#]+)/);
-  // Also try ?q= param as fallback (some share formats use it)
   const qMatch = !nameMatch && resolvedUrl.match(/[?&]q=([^&]+)/);
-  // Also try coordinates as last resort: /@lat,lng or @lat,lng
   const coordMatch = !nameMatch && !qMatch && resolvedUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-  const query = nameMatch
-    ? decodeURIComponent(nameMatch[1].replace(/\+/g,' '))
-    : qMatch ? decodeURIComponent(qMatch[1].replace(/\+/g,' '))
-    : coordMatch ? `${coordMatch[1]},${coordMatch[2]}` : '';
+  const query = shortLinkName
+    || (nameMatch ? decodeURIComponent(nameMatch[1].replace(/\+/g,' ')) : '')
+    || (qMatch ? decodeURIComponent(qMatch[1].replace(/\+/g,' ')) : '')
+    || (coordMatch ? `${coordMatch[1]},${coordMatch[2]}` : '');
   if(!query){ setMapsStatus('Could not read place from URL. Try a full Maps link.'); return; }
 
   setMapsStatus('Searching…');
@@ -2802,21 +2803,26 @@ async function fetchFromMapsLocalTrip(){
   if(!key){ document.getElementById('ltMapsStatus').textContent='Save a Google Places API key first.'; return; }
   // Resolve shortened mobile URLs
   let resolvedUrl=url;
+  let shortLinkNameLT='';
   if(/goo\.gl\/|maps\.app\.goo\.gl/.test(url)){
     document.getElementById('ltMapsStatus').textContent='Resolving short link…';
     try{
-      const r=await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(url),{signal:AbortSignal.timeout(12000)});
-      const d=await r.json();
-      const html=d.contents||'';
-      const mapsMatch=html.match(/https:\/\/(?:www\.)?google\.com\/maps\/[^"'\s<>\\]+/);
-      if(mapsMatch) resolvedUrl=mapsMatch[0].replace(/\\u003d/g,'=').replace(/\\\//g,'/');
-      else if(d.status&&d.status.url&&d.status.url!==url) resolvedUrl=d.status.url;
+      const jinaRes=await fetch('https://r.jina.ai/'+url,{signal:AbortSignal.timeout(15000)});
+      if(jinaRes.ok){
+        const md=await jinaRes.text();
+        const headingMatch=md.match(/^#\s+(.+?)(?:\s+-\s+Google Maps)?\s*$/m);
+        if(headingMatch) shortLinkNameLT=headingMatch[1].trim();
+        const mapsMatch=md.match(/https:\/\/(?:www\.)?google\.com\/maps\/place\/[^\s"')]+/);
+        if(mapsMatch) resolvedUrl=mapsMatch[0];
+      }
     } catch(_){}
   }
   const nameMatch=resolvedUrl.match(/\/maps\/place\/([^/@?#]+)/);
   const qMatch=!nameMatch&&resolvedUrl.match(/[?&]q=([^&]+)/);
   const coordMatch=!nameMatch&&!qMatch&&resolvedUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-  const query=nameMatch?decodeURIComponent(nameMatch[1].replace(/\+/g,' ')):qMatch?decodeURIComponent(qMatch[1].replace(/\+/g,' ')):coordMatch?`${coordMatch[1]},${coordMatch[2]}`:'';
+  const query=shortLinkNameLT||(nameMatch?decodeURIComponent(nameMatch[1].replace(/\+/g,' ')):'')
+    ||(qMatch?decodeURIComponent(qMatch[1].replace(/\+/g,' ')):'')
+    ||(coordMatch?`${coordMatch[1]},${coordMatch[2]}`:'');
   if(!query){ document.getElementById('ltMapsStatus').textContent='Could not read place from URL.'; return; }
   document.getElementById('ltMapsStatus').textContent='Searching…';
   try{

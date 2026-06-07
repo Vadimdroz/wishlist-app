@@ -2615,6 +2615,15 @@ async function stuffFetchProduct(){
   let desc =(info&&info.desc)||'';
   let image=(info&&info.image)||'';
 
+  // Amazon: CDN direct image is far more reliable than Microlink's og:image (often the Prime logo)
+  const asinMatch = url.match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/i);
+  if(asinMatch){
+    const asin = asinMatch[1];
+    // Skip marketing/logo images Microlink returns for Amazon
+    if(!image || /\/marketing\/|\/G\/01\/|prime.*logo|logo.*prime/i.test(image))
+      image = `https://images-na.ssl-images-amazon.com/images/P/${asin}.jpg`;
+  }
+
   // Supplement with og:image if strategy 1 returned no image
   function extractOgImg(h){ const m=h.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)||h.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i); return m?m[1]:''; }
   if(!image&&htmlForImage) image=extractOgImg(htmlForImage);

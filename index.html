@@ -2330,8 +2330,19 @@ async function fetchRecipeInfo(){
     return scanFor(text);
   }
 
+  // ── Image: Microlink (most reliable og:image source) ─────────────────────────
+  if(url){
+    try{
+      const mlRes=await fetch(`https://api.microlink.io?url=${encodeURIComponent(url)}&screenshot=false`,{signal:AbortSignal.timeout(8000)});
+      if(mlRes.ok){
+        const mlData=await mlRes.json();
+        const mlImg=(mlData?.data?.image?.url)||'';
+        if(mlImg&&mlImg.startsWith('http')) setFormPoster(mlImg);
+      }
+    }catch(_){}
+  }
+
   // ── Strategy 1: Schema.org JSON-LD (works on AllRecipes, BBC Good Food, etc.)
-  // Also always grab the image from HTML regardless of whether Schema.org succeeds
   let htmlForImage='';
   if(url){
     try{
@@ -2454,7 +2465,7 @@ async function fetchRecipeInfo(){
     if(info.cuisine) setField('f-cuisine',info.cuisine);
     if(info.name&&!v('f-title')) setField('f-title',info.name);
     if(info.author){ const byEl=document.getElementById('f-recipe-by'); if(byEl&&!byEl.value){ const cleaned=String(info.author).replace(/^@\S+$/,'').trim(); if(cleaned) byEl.value=cleaned; } }
-    if(info.imageUrl&&info.imageUrl.startsWith('http')) setFormPoster(info.imageUrl);
+    if(info.imageUrl){ const iUrl=info.imageUrl.startsWith('//')?'https:'+info.imageUrl:info.imageUrl; if(iUrl.startsWith('http')) setFormPoster(iUrl); }
     let notes='';
     if(info.totalTime) notes+=`⏱ ${info.totalTime}\n\n`;
     if(info.ingredients) notes+=`🧂 Ingredients:\n${info.ingredients}`;

@@ -1883,6 +1883,7 @@ function buildPosterSection(posterUrl){
   }
 
   inner._showPoster = showPoster;
+  inner._showUploadArea = showUploadArea;
 
   if(posterUrl&&posterUrl!=='N/A') showPoster(posterUrl);
   else showUploadArea();
@@ -2703,8 +2704,13 @@ async function stuffFetchProduct(){
   } else if(title){
     setStatus('No image found — generating one…');
     const aiPr=encodeURIComponent('product photo of '+title+', clean white background, studio lighting, high quality');
-    setFormPoster(`https://image.pollinations.ai/prompt/${aiPr}?width=400&height=400&nologo=true&seed=${Date.now()}`);
-    setStatus('✓ Done — AI-generated image used (swap it if you have a better one).');
+    setFormPoster(`https://image.pollinations.ai/prompt/${aiPr}?width=400&height=400&seed=${Date.now()}`);
+    const psInner=document.getElementById('posterSection');
+    const pImg=psInner?.querySelector('img');
+    if(pImg){
+      pImg.onload=()=>setStatus('✓ Done — AI-generated image used (swap it if you have a better one).');
+      pImg.onerror=()=>{ psInner._showUploadArea?.(); setStatus('✓ Done — no image found; tap above to upload.'); };
+    }
   } else {
     setStatus('Could not fetch — fill in title and the image will be generated automatically.');
   }

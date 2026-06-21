@@ -2339,20 +2339,9 @@ async function fetchRecipeInfo(){
     return scanFor(text);
   }
 
-  // ── Image: Microlink (most reliable og:image source) ─────────────────────────
-  if(url){
-    try{
-      const mlRes=await fetch(`https://api.microlink.io?url=${encodeURIComponent(url)}&screenshot=false`,{signal:AbortSignal.timeout(8000)});
-      if(mlRes.ok){
-        const mlData=await mlRes.json();
-        const mlImg=(mlData?.data?.image?.url)||'';
-        if(mlImg&&mlImg.startsWith('http')) setFormPoster(mlImg);
-      }
-    }catch(_){}
-  }
-
   // ── Strategy 1: Schema.org JSON-LD (works on AllRecipes, BBC Good Food, etc.)
   let htmlForImage='';
+  let imageSet=false;
   if(url){
     try{
       const proxyUrl='https://api.allorigins.win/get?url='+encodeURIComponent(url);
@@ -2385,7 +2374,7 @@ async function fetchRecipeInfo(){
                 if(cuisine) setField('f-cuisine',cuisine);
                 if(name&&!v('f-title')) setField('f-title',name);
                 if(authorName){ const byEl=document.getElementById('f-recipe-by'); if(byEl&&!byEl.value){ const cleaned=String(authorName).replace(/^@\S+$/,'').trim(); if(cleaned) byEl.value=cleaned; } }
-                if(imgUrl) setFormPoster(imgUrl);
+                if(imgUrl){ setFormPoster(imgUrl); imageSet=true; }
                 let notes='';
                 if(timeStr) notes+=`⏱ ${timeStr}\n\n`;
                 if(ingredients) notes+=`🧂 Ingredients:\n${ingredients}`;
@@ -2397,9 +2386,21 @@ async function fetchRecipeInfo(){
           }catch(_){}
         }
 
-        // Schema.org not found — still set OG image if available
+        // Schema.org not found — try og:image from the HTML
         const ogImg=extractOgImage(html);
-        if(ogImg) setFormPoster(ogImg);
+        if(ogImg){ setFormPoster(ogImg); imageSet=true; }
+      }
+    }catch(_){}
+  }
+
+  // ── Microlink fallback: only if Schema.org and og:image both failed ──────────
+  if(url&&!imageSet){
+    try{
+      const mlRes=await fetch(`https://api.microlink.io?url=${encodeURIComponent(url)}&screenshot=false`,{signal:AbortSignal.timeout(8000)});
+      if(mlRes.ok){
+        const mlData=await mlRes.json();
+        const mlImg=(mlData?.data?.image?.url)||'';
+        if(mlImg&&mlImg.startsWith('http')){ setFormPoster(mlImg); imageSet=true; }
       }
     }catch(_){}
   }

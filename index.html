@@ -1420,8 +1420,14 @@ function buildForm(body, c, item){
     const pc = el('div'); pc.id='pickerContainer'; body.appendChild(pc);
   }
 
-  // Restaurants: Maps URL + Fetch button (shown before title, like the smart-update block)
+  // Restaurants: search by name + Maps URL paste
   if(c.id==='restaurants'){
+    const restSearchRow = el('div','form-row');
+    restSearchRow.innerHTML=`<label>Search by name</label><div style="display:flex;gap:8px"><input class="form-input" id="f-rest-search" placeholder="Type a restaurant or place name…" style="flex:1"/><button class="smart-btn" type="button" id="restSearchBtn" style="margin:0;width:auto;padding:8px 14px;white-space:nowrap">🔍 Search</button></div>`;
+    body.appendChild(restSearchRow);
+    const restPicker = el('div'); restPicker.id='restPickerContainer'; body.appendChild(restPicker);
+    const divR = el('div'); divR.style.cssText='text-align:center;color:var(--muted);font-size:.75rem;margin:4px 0 8px'; divR.textContent='— or paste a link —';
+    body.appendChild(divR);
     const mapsRow = el('div','form-row');
     mapsRow.innerHTML=`<label>Google Maps Link</label><div style="display:flex;gap:8px"><input class="form-input" id="f-maps" value="${esc(item&&item.mapsLink||'')}" placeholder="Paste Google Maps URL…" style="flex:1"/><button class="smart-btn" type="button" id="mapsSmartBtn" style="margin:0;width:auto;padding:8px 14px;white-space:nowrap">🗺️ Fetch</button></div>`;
     body.appendChild(mapsRow);
@@ -1432,8 +1438,11 @@ function buildForm(body, c, item){
         ? `<div class="form-row" style="margin-top:-4px"><label style="color:var(--muted);font-size:.78rem">Places API key saved — <button type="button" onclick="showPlacesKeyInput('mapsKeyWrap','mapsKeyInput')" style="background:none;border:none;color:#a5b4fc;font-size:.78rem;cursor:pointer;padding:0;text-decoration:underline">change</button></label></div>`
         : `<div class="form-row" style="margin-top:-4px"><label style="color:var(--muted);font-size:.78rem">Paste a Google Places API key to enable auto-fill</label><div style="display:flex;gap:8px"><input class="form-input" id="mapsKeyInput" placeholder="AIza…" style="flex:1"/><button class="poster-url-btn" type="button" onclick="savePlacesKey()">Save key</button></div></div>`;
       body.appendChild(kw); }
-    // wire up after appending so getElementById finds the button
-    setTimeout(()=>{ const b=document.getElementById('mapsSmartBtn'); if(b) b.onclick=fetchFromMaps; },0);
+    setTimeout(()=>{
+      const b=document.getElementById('mapsSmartBtn'); if(b) b.onclick=fetchFromMaps;
+      const sb=document.getElementById('restSearchBtn'); if(sb) sb.onclick=searchPlacesRestaurant;
+      const inp=document.getElementById('f-rest-search'); if(inp) inp.onkeydown=e=>{ if(e.key==='Enter') searchPlacesRestaurant(); };
+    },0);
   }
 
   // Title
@@ -1551,7 +1560,14 @@ function buildForm(body, c, item){
 
   // Local trips fields
   if(c.id==='local-trips'){
-    // Maps Smart Update
+    // Search by name
+    const ltSearchRow = el('div','form-row');
+    ltSearchRow.innerHTML=`<label>Search by name</label><div style="display:flex;gap:8px"><input class="form-input" id="f-lt-search" placeholder="Type a place name…" style="flex:1"/><button class="smart-btn" type="button" id="ltSearchBtn" style="margin:0;width:auto;padding:8px 14px;white-space:nowrap">🔍 Search</button></div>`;
+    body.appendChild(ltSearchRow);
+    const ltPicker = el('div'); ltPicker.id='ltPickerContainer'; body.appendChild(ltPicker);
+    const divLT = el('div'); divLT.style.cssText='text-align:center;color:var(--muted);font-size:.75rem;margin:4px 0 8px'; divLT.textContent='— or paste a link —';
+    body.appendChild(divLT);
+    // Maps URL paste
     const ltMapsRow = el('div','form-row');
     ltMapsRow.innerHTML=`<label>Google Maps Link</label><div style="display:flex;gap:8px"><input class="form-input" id="f-maps" value="${esc(item&&item.mapsLink||'')}" placeholder="Paste Google Maps URL…" style="flex:1"/><button class="smart-btn" type="button" id="ltMapsBtn" style="margin:0;width:auto;padding:8px 14px;white-space:nowrap">🗺️ Fetch</button></div>`;
     body.appendChild(ltMapsRow);
@@ -1562,7 +1578,11 @@ function buildForm(body, c, item){
         ? `<div class="form-row" style="margin-top:-4px"><label style="color:var(--muted);font-size:.78rem">Places API key saved — <button type="button" onclick="showPlacesKeyInput('ltKeyWrap','ltKeyInput')" style="background:none;border:none;color:#a5b4fc;font-size:.78rem;cursor:pointer;padding:0;text-decoration:underline">change</button></label></div>`
         : `<div class="form-row" style="margin-top:-4px"><label style="color:var(--muted);font-size:.78rem">Google Places API key needed to fetch data</label><div style="display:flex;gap:8px"><input class="form-input" id="ltKeyInput" placeholder="AIza…" style="flex:1"/><button class="poster-url-btn" type="button" onclick="savePlacesKey()">Save key</button></div></div>`;
       body.appendChild(kw); }
-    setTimeout(()=>{ const b=document.getElementById('ltMapsBtn'); if(b) b.onclick=fetchFromMapsLocalTrip; },0);
+    setTimeout(()=>{
+      const b=document.getElementById('ltMapsBtn'); if(b) b.onclick=fetchFromMapsLocalTrip;
+      const sb=document.getElementById('ltSearchBtn'); if(sb) sb.onclick=searchPlacesLocalTrip;
+      const inp=document.getElementById('f-lt-search'); if(inp) inp.onkeydown=e=>{ if(e.key==='Enter') searchPlacesLocalTrip(); };
+    },0);
 
     // Type picker
     const typeRow = el('div','form-row');
@@ -2139,55 +2159,7 @@ async function fetchFromMaps(){
     if(data.error){ setMapsStatus('API error: '+data.error.message); return; }
     const place = (data.places||[])[0];
     if(!place){ setMapsStatus('No results found.'); return; }
-
-    // Name
-    if(place.displayName) setField('f-title', place.displayName.text);
-
-    // City + Country from address components
-    let city='', country='';
-    (place.addressComponents||[]).forEach(comp=>{
-      if(comp.types.includes('locality'))                              city    = comp.longText;
-      if(comp.types.includes('administrative_area_level_1') && !city) city    = comp.longText;
-      if(comp.types.includes('country'))                              country = comp.longText;
-    });
-    if(city)    setField('f-city', city);
-    if(country) setField('f-country', country);
-
-    // Cuisine from primaryTypeDisplayName (e.g. "Italian restaurant" → "Italian")
-    if(place.primaryTypeDisplayName){
-      const raw = place.primaryTypeDisplayName.text||'';
-      const cuisine = raw.replace(/\s*restaurant\b/i,'').trim();
-      if(cuisine && !['food','establishment','restaurant'].includes(cuisine.toLowerCase())){
-        setField('f-cuisine', cuisine);
-      }
-    }
-
-    // Price level → our dropdown buckets
-    const priceLevelMap = {
-      PRICE_LEVEL_INEXPENSIVE: 'budget',
-      PRICE_LEVEL_MODERATE:    'mid',
-      PRICE_LEVEL_EXPENSIVE:   'upscale',
-      PRICE_LEVEL_VERY_EXPENSIVE: 'fine'
-    };
-    if(place.priceLevel && priceLevelMap[place.priceLevel]){
-      const sel = document.getElementById('f-price');
-      if(sel) sel.value = priceLevelMap[place.priceLevel];
-    }
-
-    // Cover photo — fetch the redirect URL then set as poster
-    if(place.photos && place.photos.length){
-      setMapsStatus('Fetching cover image…');
-      try{
-        const photoName = place.photos[0].name;
-        const photoRes = await fetch(
-          `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=800&skipHttpRedirect=true&key=${key}`
-        );
-        const photoData = await photoRes.json();
-        if(photoData.photoUri) setFormPoster(photoData.photoUri);
-      } catch(_){}
-    }
-
-    setMapsStatus('✓ Done! Review and adjust the fields below.');
+    await applyRestaurantPlace(place, key, setMapsStatus);
   } catch(e){ setMapsStatus('Error: '+e.message); }
 }
 
@@ -2911,25 +2883,141 @@ async function fetchFromMapsLocalTrip(){
     if(data.error){ document.getElementById('ltMapsStatus').textContent='API error: '+data.error.message; return; }
     const place=(data.places||[])[0];
     if(!place){ document.getElementById('ltMapsStatus').textContent='No results found.'; return; }
-    if(place.displayName) setField('f-title',place.displayName.text);
-    let region='';
-    (place.addressComponents||[]).forEach(comp=>{
-      if(comp.types.includes('administrative_area_level_1')) region=comp.longText;
-    });
-    if(region) setField('f-region',region);
-    // Store location for commute calc
-    if(place.location) window._ltPlaceLocation=place.location;
-    // Cover photo
-    if(place.photos&&place.photos.length){
-      document.getElementById('ltMapsStatus').textContent='Fetching image…';
-      try{
-        const pr=await fetch(`https://places.googleapis.com/v1/${place.photos[0].name}/media?maxWidthPx=800&skipHttpRedirect=true&key=${key}`);
-        const pd=await pr.json();
-        if(pd.photoUri) setFormPoster(pd.photoUri);
-      }catch(_){}
-    }
-    document.getElementById('ltMapsStatus').textContent='✓ Done! Adjust fields below, then click 🧭 Calculate for commute.';
+    await applyLocalTripPlace(place, key, document.getElementById('ltMapsStatus'));
   }catch(e){ document.getElementById('ltMapsStatus').textContent='Error: '+e.message; }
+}
+
+// ── Places picker helpers ──────────────────────────────────────────────────────
+function showPlacesPicker(containerId, places, onSelect){
+  const container=document.getElementById(containerId);
+  if(!container) return;
+  container.innerHTML='';
+  const list=el('div','picker-list');
+  places.forEach(place=>{
+    const row=el('div','picker-item');
+    const name=place.displayName?.text||'';
+    const addr=place.formattedAddress||'';
+    const type=place.primaryTypeDisplayName?.text||'';
+    const sub=[type,addr].filter(Boolean).join(' · ');
+    row.innerHTML=`<div style="width:40px;height:40px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">📍</div>
+      <div class="picker-item-info">
+        <div class="picker-item-title">${esc(name)}</div>
+        <div class="picker-item-sub">${esc(sub)}</div>
+      </div>`;
+    row.onclick=()=>{ container.innerHTML=''; onSelect(place); };
+    list.appendChild(row);
+  });
+  container.appendChild(list);
+}
+
+async function applyRestaurantPlace(place, key, setStatus){
+  if(place.displayName) setField('f-title', place.displayName.text);
+  let city='', country='';
+  (place.addressComponents||[]).forEach(comp=>{
+    if(comp.types.includes('locality'))                              city    = comp.longText;
+    if(comp.types.includes('administrative_area_level_1') && !city) city    = comp.longText;
+    if(comp.types.includes('country'))                              country = comp.longText;
+  });
+  if(city)    setField('f-city', city);
+  if(country) setField('f-country', country);
+  if(place.primaryTypeDisplayName){
+    const raw=place.primaryTypeDisplayName.text||'';
+    const cuisine=raw.replace(/\s*restaurant\b/i,'').trim();
+    if(cuisine&&!['food','establishment','restaurant'].includes(cuisine.toLowerCase()))
+      setField('f-cuisine', cuisine);
+  }
+  const priceLevelMap={PRICE_LEVEL_INEXPENSIVE:'budget',PRICE_LEVEL_MODERATE:'mid',PRICE_LEVEL_EXPENSIVE:'upscale',PRICE_LEVEL_VERY_EXPENSIVE:'fine'};
+  if(place.priceLevel&&priceLevelMap[place.priceLevel]){
+    const sel=document.getElementById('f-price'); if(sel) sel.value=priceLevelMap[place.priceLevel];
+  }
+  if(place.photos&&place.photos.length){
+    setStatus('Fetching cover image…');
+    try{
+      const pr=await fetch(`https://places.googleapis.com/v1/${place.photos[0].name}/media?maxWidthPx=800&skipHttpRedirect=true&key=${key}`);
+      const pd=await pr.json();
+      if(pd.photoUri) setFormPoster(pd.photoUri);
+    }catch(_){}
+  }
+  setStatus('✓ Done! Review and adjust the fields below.');
+}
+
+async function applyLocalTripPlace(place, key, statusEl){
+  const set=msg=>{ if(statusEl) statusEl.textContent=msg; };
+  if(place.displayName) setField('f-title', place.displayName.text);
+  let region='';
+  (place.addressComponents||[]).forEach(comp=>{
+    if(comp.types.includes('administrative_area_level_1')) region=comp.longText;
+  });
+  if(region) setField('f-region', region);
+  if(place.location) window._ltPlaceLocation=place.location;
+  if(place.displayName){
+    const mapsEl=document.getElementById('f-maps');
+    if(mapsEl&&!mapsEl.value) mapsEl.value=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.displayName.text)}`;
+  }
+  if(place.photos&&place.photos.length){
+    set('Fetching image…');
+    try{
+      const pr=await fetch(`https://places.googleapis.com/v1/${place.photos[0].name}/media?maxWidthPx=800&skipHttpRedirect=true&key=${key}`);
+      const pd=await pr.json();
+      if(pd.photoUri) setFormPoster(pd.photoUri);
+    }catch(_){}
+  }
+  set('✓ Done! Adjust fields below, then click 🧭 Calculate for commute.');
+}
+
+async function searchPlacesRestaurant(){
+  const query=(document.getElementById('f-rest-search')||{}).value?.trim()||'';
+  const setStatus=msg=>{ const e=document.getElementById('mapsSmartStatus'); if(e) e.textContent=msg; };
+  if(!query){ setStatus('Type a name to search.'); return; }
+  const key=localStorage.getItem('places_key');
+  if(!key){ setStatus('Save a Google Places API key first.'); return; }
+  setStatus('Searching…');
+  document.getElementById('restPickerContainer').innerHTML='';
+  try{
+    const res=await fetch('https://places.googleapis.com/v1/places:searchText',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Goog-Api-Key':key,
+        'X-Goog-FieldMask':'places.displayName,places.formattedAddress,places.addressComponents,places.primaryTypeDisplayName,places.priceLevel,places.photos,places.location'},
+      body:JSON.stringify({textQuery:query,languageCode:'en',maxResultCount:5})
+    });
+    const data=await res.json();
+    if(data.error){ setStatus('API error: '+data.error.message); return; }
+    const places=data.places||[];
+    if(!places.length){ setStatus('No results found.'); return; }
+    setStatus('Pick a place:');
+    showPlacesPicker('restPickerContainer', places, async place=>{
+      setStatus('Applying…');
+      await applyRestaurantPlace(place, key, setStatus);
+    });
+  }catch(e){ setStatus('Error: '+e.message); }
+}
+
+async function searchPlacesLocalTrip(){
+  const query=(document.getElementById('f-lt-search')||{}).value?.trim()||'';
+  const statusEl=document.getElementById('ltMapsStatus');
+  const setStatus=msg=>{ if(statusEl) statusEl.textContent=msg; };
+  if(!query){ setStatus('Type a place name to search.'); return; }
+  const key=localStorage.getItem('places_key');
+  if(!key){ setStatus('Save a Google Places API key first.'); return; }
+  setStatus('Searching…');
+  document.getElementById('ltPickerContainer').innerHTML='';
+  try{
+    const res=await fetch('https://places.googleapis.com/v1/places:searchText',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Goog-Api-Key':key,
+        'X-Goog-FieldMask':'places.displayName,places.formattedAddress,places.addressComponents,places.photos,places.location'},
+      body:JSON.stringify({textQuery:query,languageCode:'en',maxResultCount:5})
+    });
+    const data=await res.json();
+    if(data.error){ setStatus('API error: '+data.error.message); return; }
+    const places=data.places||[];
+    if(!places.length){ setStatus('No results found.'); return; }
+    setStatus('Pick a place:');
+    showPlacesPicker('ltPickerContainer', places, async place=>{
+      setStatus('Applying…');
+      await applyLocalTripPlace(place, key, statusEl);
+    });
+  }catch(e){ setStatus('Error: '+e.message); }
 }
 
 async function calcCommute(){

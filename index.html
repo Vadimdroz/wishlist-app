@@ -2911,22 +2911,22 @@ function showPlacesPicker(containerId, places, onSelect){
 }
 
 async function applyRestaurantPlace(place, key, setStatus){
-  if(place.displayName) setField('f-title', place.displayName.text);
+  if(place.displayName?.text) setField('f-title', place.displayName.text);
   const mapsEl=document.getElementById('f-maps');
   if(mapsEl) mapsEl.value=place.id
     ? `https://www.google.com/maps/place/?q=place_id:${place.id}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.displayName?.text||'')}`;
   let city='', country='';
   (place.addressComponents||[]).forEach(comp=>{
+    if(!comp.types) return;
     if(comp.types.includes('locality'))                              city    = comp.longText;
     if(comp.types.includes('administrative_area_level_1') && !city) city    = comp.longText;
     if(comp.types.includes('country'))                              country = comp.longText;
   });
   if(city)    setField('f-city', city);
   if(country) setField('f-country', country);
-  if(place.primaryTypeDisplayName){
-    const raw=place.primaryTypeDisplayName.text||'';
-    const cuisine=raw.replace(/\s*restaurant\b/i,'').trim();
+  if(place.primaryTypeDisplayName?.text){
+    const cuisine=place.primaryTypeDisplayName.text.replace(/\s*restaurant\b/i,'').trim();
     if(cuisine&&!['food','establishment','restaurant'].includes(cuisine.toLowerCase()))
       setField('f-cuisine', cuisine);
   }
@@ -2934,10 +2934,10 @@ async function applyRestaurantPlace(place, key, setStatus){
   if(place.priceLevel&&priceLevelMap[place.priceLevel]){
     const sel=document.getElementById('f-price'); if(sel) sel.value=priceLevelMap[place.priceLevel];
   }
-  if(place.photos&&place.photos.length){
+  if(place.photos?.length){
     setStatus('Fetching cover image…');
     try{
-      const pr=await fetch(`https://places.googleapis.com/v1/${place.photos[0].name}/media?maxWidthPx=800&skipHttpRedirect=true&key=${key}`);
+      const pr=await fetch(`https://places.googleapis.com/v1/${place.photos[0].name}/media?maxWidthPx=800&skipHttpRedirect=true&key=${key}`,{signal:AbortSignal.timeout(8000)});
       const pd=await pr.json();
       if(pd.photoUri) setFormPoster(pd.photoUri);
     }catch(_){}
@@ -2947,21 +2947,22 @@ async function applyRestaurantPlace(place, key, setStatus){
 
 async function applyLocalTripPlace(place, key, statusEl){
   const set=msg=>{ if(statusEl) statusEl.textContent=msg; };
-  if(place.displayName) setField('f-title', place.displayName.text);
+  if(place.displayName?.text) setField('f-title', place.displayName.text);
   const mapsEl=document.getElementById('f-maps');
   if(mapsEl) mapsEl.value=place.id
     ? `https://www.google.com/maps/place/?q=place_id:${place.id}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.displayName?.text||'')}`;
   let region='';
   (place.addressComponents||[]).forEach(comp=>{
+    if(!comp.types) return;
     if(comp.types.includes('administrative_area_level_1')) region=comp.longText;
   });
   if(region) setField('f-region', region);
   if(place.location) window._ltPlaceLocation=place.location;
-  if(place.photos&&place.photos.length){
+  if(place.photos?.length){
     set('Fetching image…');
     try{
-      const pr=await fetch(`https://places.googleapis.com/v1/${place.photos[0].name}/media?maxWidthPx=800&skipHttpRedirect=true&key=${key}`);
+      const pr=await fetch(`https://places.googleapis.com/v1/${place.photos[0].name}/media?maxWidthPx=800&skipHttpRedirect=true&key=${key}`,{signal:AbortSignal.timeout(8000)});
       const pd=await pr.json();
       if(pd.photoUri) setFormPoster(pd.photoUri);
     }catch(_){}
@@ -2991,7 +2992,8 @@ async function searchPlacesRestaurant(){
     setStatus('Pick a place:');
     showPlacesPicker('restPickerContainer', places, async place=>{
       setStatus('Applying…');
-      await applyRestaurantPlace(place, key, setStatus);
+      try{ await applyRestaurantPlace(place, key, setStatus); }
+      catch(e){ setStatus('Error: '+e.message); }
     });
   }catch(e){ setStatus('Error: '+e.message); }
 }
@@ -3019,7 +3021,8 @@ async function searchPlacesLocalTrip(){
     setStatus('Pick a place:');
     showPlacesPicker('ltPickerContainer', places, async place=>{
       setStatus('Applying…');
-      await applyLocalTripPlace(place, key, statusEl);
+      try{ await applyLocalTripPlace(place, key, statusEl); }
+      catch(e){ setStatus('Error: '+e.message); }
     });
   }catch(e){ setStatus('Error: '+e.message); }
 }

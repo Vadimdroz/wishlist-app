@@ -800,6 +800,23 @@ function makePosterPlaceholder(c){
   return ph;
 }
 
+// Some image hosts (e.g. Pollinations, which generates on demand) time out on the
+// first request and succeed once the image is cached server-side. Retry a few times
+// with backoff before giving up. onFail runs after the final failed attempt.
+function attachImgRetry(img, url, onFail, maxRetries){
+  maxRetries = maxRetries==null ? 4 : maxRetries;
+  let tries = 0;
+  img.onerror = () => {
+    if(tries < maxRetries){
+      tries++;
+      setTimeout(() => { img.src = url + (url.indexOf('?')>=0?'&':'?') + '_retry=' + tries; }, 1200*tries);
+    } else if(onFail){
+      onFail();
+    }
+  };
+  img.src = url;
+}
+
 // ─── Item card builder ────────────────────────────────────────────────────────
 function buildItemCard(item, c){
   const card = el('div','item-card');
@@ -812,10 +829,9 @@ function buildItemCard(item, c){
     if(item.poster && item.poster!=='N/A'){
       const img = document.createElement('img');
       img.className = 'item-card-poster';
-      img.src = item.poster;
       img.loading = 'lazy';
       img.alt = '';
-      img.onerror = () => { img.replaceWith(makePosterPlaceholder(c)); };
+      attachImgRetry(img, item.poster, () => { img.replaceWith(makePosterPlaceholder(c)); });
       inner.appendChild(img);
     } else {
       inner.appendChild(makePosterPlaceholder(c));
@@ -1246,7 +1262,8 @@ function openDetail(id){
   if(hasMedia){
     const top = el('div','detail-top');
     const img = document.createElement('img');
-    img.className='detail-poster'; img.src=item.poster; img.alt='';
+    img.className='detail-poster'; img.alt='';
+    attachImgRetry(img, item.poster, () => { img.style.display='none'; });
     top.appendChild(img);
     top.appendChild(buildDetailInfo(item,c));
     body.appendChild(top);

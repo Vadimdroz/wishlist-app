@@ -3698,12 +3698,13 @@ function detailSiblings(){
 }
 
 // Step to the previous/next item in the current category (dir: -1 prev, +1 next).
+// Wraps around at the ends so you can cycle through the whole category.
 function navDetailItem(dir){
   const sibs = detailSiblings();
+  if(sibs.length < 2) return;
   const idx = sibs.findIndex(i => i.id===editId);
   if(idx < 0) return;
-  const ni = idx + dir;
-  if(ni < 0 || ni >= sibs.length) return; // at an edge — stop
+  const ni = (idx + dir + sibs.length) % sibs.length;
   openDetail(sibs[ni].id);
   oneShotAnim(document.getElementById('sheetBody'), dir>0 ? 'anim-slide-r' : 'anim-slide-l');
 }

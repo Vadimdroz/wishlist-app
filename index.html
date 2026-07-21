@@ -393,7 +393,7 @@ const CATS = [
   {id:'restaurants',label:'Restaurants',emoji:'🍽️',color:'#ef4444',img:'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=480&h=360&fit=crop&q=80',subs:[]},
   {id:'recipes',label:'Recipes',emoji:'👨‍🍳',color:'#f97316',img:'https://images.unsplash.com/photo-1466637574441-749b8f19452f?w=480&h=360&fit=crop&q=80',subs:[]},
   {id:'local-trips',label:'Local Trips',emoji:'🚗',color:'#3b82f6',img:'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=480&h=360&fit=crop&q=80',subs:[{id:'day-trips',label:'Day Trips'},{id:'hotels',label:'Hotels & Overnight'}]},
-  {id:'intl-trips',label:'International Trips',emoji:'✈️',color:'#0ea5e9',img:'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=480&h=360&fit=crop&q=80',subs:[]},
+  {id:'intl-trips',label:'International Trips',emoji:'✈️',color:'#0ea5e9',img:'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=480&h=360&fit=crop&q=80',subs:[{id:'vadim',label:'Vadim'},{id:'family',label:'Family'}]},
 ];
 const BOOK_GENRES = ['Sci-fi','Health','Business','Investing','History','Biography','Philosophy','Geo-Politics','Self Improvement'];
 const YT_KEY = 'AIzaSyCUhLADIiLB4AN5A3wdwXd8X_D8PnOnNBg';
@@ -451,6 +451,49 @@ items = items.map(i => {
   if (i.cat !== 'trips') return i;
   return {...i, cat: i.sub === 'israel' ? 'local-trips' : 'intl-trips', sub: null};
 });
+// One-time seed: European hut treks → International Trips (from X thread)
+(function seedTreks(){
+  if(localStorage.getItem('wl_seed_treks_v1')) return;
+  const src='X trek thread';
+  const treks=[
+    {id:'trek-jotunheimen',sub:'vadim',title:'Jotunheimen',country:'Norway',match:5,
+     tripDesc:'My idea of a perfect hut trek — breathtaking scenery and huge variety: fjords, forests, and empty snowy expanses. Many kinds of huts and interesting human encounters. It is remote and long, best suited to the summer months; highly recommended if you can manage it.',
+     bestTime:'Summer (Jul–Aug)',tripDuration:'Multi-day',mustSee:'Fjords, forests, high snowfields',weather:'Cool alpine, snow lingers'},
+    {id:'trek-triglav',sub:'vadim',title:'Triglav National Park',country:'Slovenia',match:5,
+     tripDesc:'One of the most beautiful but also the hardest on the list. Climb to Slovenia’s highest peak with many rocky, technical sections — still a trek and not a climb, and completely worth it. Nothing beats reaching the hut below the summit for a beer and strudel facing the view.',
+     bestTime:'Summer',tripDuration:'3–4 days',mustSee:'Mt. Triglav summit, summit-side huts',weather:'Alpine, rocky terrain'},
+    {id:'trek-carros-de-foc',sub:'vadim',title:'Carros de Foc (Pyrenees)',country:'Spain',match:4,
+     tripDesc:'The "chariots of fire" hut circuit in the Spanish Pyrenees. More Mediterranean in feel yet still very varied, with several climbs and descents and some very special huts. As with many reserves you can build a route to match your available time and hut availability — I did a 4-day route.',
+     bestTime:'Summer',tripDuration:'4 days (flexible)',mustSee:'Mountain refuges, lakes and passes',weather:'Warm Mediterranean-alpine'},
+    {id:'trek-tour-du-mont-blanc',sub:'vadim',title:'Tour du Mont Blanc',country:'France · Italy · Switzerland',match:5,
+     tripDesc:'Perhaps the most famous of all. It crosses 3 countries — towns, villages, and several full days in nature. Not easy but not too technical. Favourite spot: Lac Blanc and the view from the Swiss border toward France. A great mix of nature, cultures and fine huts. Base yourself in Chamonix, not far from Geneva airport.',
+     bestTime:'Summer (Jun–Sep)',tripDuration:'~7–11 days',mustSee:'Lac Blanc, Chamonix, Courmayeur',weather:'Variable alpine'},
+    {id:'trek-alta-via-1',sub:'vadim',title:'Alta Via 1 (Dolomites)',country:'Italy',match:3,
+     tripDesc:'One of the Alta Via routes in the Italian Dolomites. Within the genre I love, I admit this is the one I connected with least — a bit too busy and commercialised, and the rocky scenery spoke to me less. Still, it is always good to spend days out in nature — and the coffee was excellent.',
+     bestTime:'Summer',tripDuration:'Multi-day',mustSee:'Dolomite rifugi',weather:'Alpine, rocky'},
+    {id:'trek-vanoise',sub:'vadim',title:'Vanoise National Park',country:'France',match:4,
+     tripDesc:'Close to the Tour du Mont Blanc but far less known — shorter and much more wilderness. A mix of large institutional huts and small family-run ones. Not especially hard, though the climb up to the ridge where most of the trek runs is long and a little tiring.',
+     bestTime:'Summer',tripDuration:'Multi-day',mustSee:'High ridge, family-run huts',weather:'Alpine wilderness'},
+    {id:'trek-kungsleden',sub:'vadim',title:'Kungsleden (The King’s Trail)',country:'Sweden',match:4,
+     tripDesc:'A trail I loved, though in a slightly different genre — more of a journey through the countryside than a classic hut trek.',
+     bestTime:'Summer',tripDuration:'Multi-day',mustSee:'Arctic countryside',weather:'Cold northern'},
+    {id:'trek-west-highland-way',sub:'vadim',title:'West Highland Way',country:'Scotland',match:4,
+     tripDesc:'More of a countryside journey than a hut trek, but one I loved all the same.',
+     bestTime:'Late spring – early autumn',tripDuration:'Multi-day',mustSee:'Scottish Highlands',weather:'Cool, often wet'}
+  ];
+  const now=Date.now();
+  treks.forEach((t,idx)=>{
+    if(items.some(i=>i.id===t.id)) return;
+    items.push({
+      id:t.id, cat:'intl-trips', status:'future', sub:t.sub,
+      title:t.title, year:'', country:t.country, source:src,
+      poster:null, match:t.match||null,
+      tripDesc:t.tripDesc, bestTime:t.bestTime||'', tripDuration:t.tripDuration||'',
+      mustSee:t.mustSee||'', weather:t.weather||'', notes:'', createdAt:now+idx
+    });
+  });
+  localStorage.setItem('wl_seed_treks_v1','1');
+})();
 save();
 
 let tab = 'future', catId = null, editId = null, formSub = null, searchQuery = '';
@@ -898,6 +941,7 @@ function buildItemCard(item, c){
   } else if(c.id==='intl-trips'){
     if(item.tripDesc){ const d=el('div','item-card-notes'); d.style.cssText='font-style:italic;margin-top:4px'; d.textContent=item.tripDesc; body.appendChild(d); }
     const itMeta=el('div','item-card-meta'); itMeta.style.marginTop='4px';
+    if(item.sub){ const sub=c.subs.find(s=>s.id===item.sub); if(sub) itMeta.insertAdjacentHTML('beforeend',`<span class="badge badge-year">👤 ${esc(sub.label)}</span>`); }
     if(item.bestTime)     itMeta.insertAdjacentHTML('beforeend',`<span class="badge badge-year">🗓 ${esc(item.bestTime)}</span>`);
     if(item.tripDuration) itMeta.insertAdjacentHTML('beforeend',`<span class="badge badge-year">⏱ ${esc(item.tripDuration)}</span>`);
     if(item.weather)      itMeta.insertAdjacentHTML('beforeend',`<span class="badge badge-year">🌤 ${esc(item.weather)}</span>`);

@@ -510,6 +510,29 @@ items = items.map(i => {
   }
   localStorage.setItem('wl_seed_family_trip_v1','1');
 })();
+// One-time: back-fill scenic web images (Pollinations) for the seeded international trips
+(function seedTripPosters(){
+  if(localStorage.getItem('wl_seed_trip_posters_v1')) return;
+  const prompts={
+    'trek-jotunheimen':'Jotunheimen Norway mountain landscape with fjord, glacier and hiking trail in summer, scenic photo',
+    'trek-triglav':'Triglav National Park Slovenia, Julian Alps rocky peak and mountain hut, scenic photo',
+    'trek-carros-de-foc':'Spanish Pyrenees alpine lake, mountain refuge and hiking trail, scenic photo',
+    'trek-tour-du-mont-blanc':'Mont Blanc snowy alpine peak above Chamonix, Lac Blanc and hiking trail, scenic photo',
+    'trek-alta-via-1':'Dolomites Italy Alta Via, jagged rocky peaks with mountain rifugio and trail, scenic photo',
+    'trek-vanoise':'Vanoise National Park French Alps, mountain ridge wilderness and hiking trail, scenic photo',
+    'trek-kungsleden':'Kungsleden trail Sweden Lapland, arctic tundra and mountains, scenic photo',
+    'trek-west-highland-way':'Scottish Highlands West Highland Way, green hills, loch and hiking trail, scenic photo',
+    'trip-south-of-france':'South of France Provence, lavender fields and Cote d\'Azur coastal village, scenic photo'
+  };
+  let seed=7;
+  Object.keys(prompts).forEach(id=>{
+    const it=items.find(i=>i.id===id);
+    if(it && !it.poster){
+      it.poster='https://image.pollinations.ai/prompt/'+encodeURIComponent(prompts[id])+'?width=800&height=600&nologo=true&seed='+(seed++);
+    }
+  });
+  localStorage.setItem('wl_seed_trip_posters_v1','1');
+})();
 save();
 
 let tab = 'future', catId = null, editId = null, formSub = null, searchQuery = '';

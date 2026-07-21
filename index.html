@@ -494,6 +494,22 @@ items = items.map(i => {
   });
   localStorage.setItem('wl_seed_treks_v1','1');
 })();
+// One-time seed: Family international trip
+(function seedFamilyTrip(){
+  if(localStorage.getItem('wl_seed_family_trip_v1')) return;
+  if(!items.some(i=>i.id==='trip-south-of-france')){
+    items.push({
+      id:'trip-south-of-france', cat:'intl-trips', status:'future', sub:'family',
+      title:'South of France', year:'', country:'France', source:'',
+      poster:null, match:null,
+      tripDesc:'Family trip through the South of France — Provence and the Côte d’Azur, easygoing pace, good food, and plenty for the kids.',
+      bestTime:'Late spring – early autumn', tripDuration:'~10–12 days',
+      mustSee:'Provence, Côte d’Azur, Gorges du Verdon, Avignon', weather:'Warm Mediterranean',
+      notes:'', createdAt:Date.now()
+    });
+  }
+  localStorage.setItem('wl_seed_family_trip_v1','1');
+})();
 save();
 
 let tab = 'future', catId = null, editId = null, formSub = null, searchQuery = '';

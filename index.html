@@ -1221,24 +1221,42 @@ function markDone(id){
     };
 
   } else {
-    // ── Default JDI (movies, tv, books, etc.) ──
-    const JDI_ASPECTS = ['Storyline & writing','Direction','Acting','Thrill & excitement','Authenticity & emotion','Style & cinematography'];
+    // ── Per-category JDI ──
+    // Each category shows its own relevant "what stood out" aspects. Categories
+    // with no defined set (e.g. Stuff) fall back to a rating + free-text comments
+    // box, instead of inheriting the movie-specific aspects.
+    const JDI_ASPECTS_BY_CAT = {
+      'movies':      ['Storyline & writing','Direction','Acting','Thrill & excitement','Authenticity & emotion','Style & cinematography'],
+      'tv-shows':    ['Storyline & writing','Direction','Acting','Thrill & excitement','Authenticity & emotion','Style & cinematography'],
+      'books':       ['Writing','Insight','Pacing','Characters','Ideas'],
+      'experiences': ['Fun','Uniqueness','Atmosphere','Value'],
+      'local-trips': ['Scenery','Fun','Relaxation','Value'],
+      'intl-trips':  ['Scenery','Culture','Food','Adventure','Value'],
+      'recipes':     ['Taste','Easy to make','Worth repeating']
+    };
+    const aspects = JDI_ASPECTS_BY_CAT[c.id] || null;
+
     body.appendChild(buildStarPicker('jdi-rating','Your Rating', item.rating||0));
-    const aspectRow = el('div','form-row');
-    const aspectLbl = document.createElement('label'); aspectLbl.textContent='What stood out?';
-    aspectRow.appendChild(aspectLbl);
-    const aspectWrap = el('div','jdi-aspects-wrap');
-    const currentAspects = item.likedAspects||[];
-    JDI_ASPECTS.forEach(a=>{
-      const pill=el('button','jdi-aspect'+(currentAspects.includes(a)?' on':''));
-      pill.type='button'; pill.textContent=a;
-      pill.onclick=()=>pill.classList.toggle('on');
-      aspectWrap.appendChild(pill);
-    });
-    aspectRow.appendChild(aspectWrap);
-    body.appendChild(aspectRow);
+
+    let aspectWrap = null;
+    if(aspects){
+      const aspectRow = el('div','form-row');
+      const aspectLbl = document.createElement('label'); aspectLbl.textContent='What stood out?';
+      aspectRow.appendChild(aspectLbl);
+      aspectWrap = el('div','jdi-aspects-wrap');
+      const currentAspects = item.likedAspects||[];
+      aspects.forEach(a=>{
+        const pill=el('button','jdi-aspect'+(currentAspects.includes(a)?' on':''));
+        pill.type='button'; pill.textContent=a;
+        pill.onclick=()=>pill.classList.toggle('on');
+        aspectWrap.appendChild(pill);
+      });
+      aspectRow.appendChild(aspectWrap);
+      body.appendChild(aspectRow);
+    }
+
     const revRow=el('div','form-row');
-    revRow.innerHTML=`<label>Anything else? (optional)</label><textarea class="form-textarea" id="jdi-review" placeholder="A few words about what made it great…" rows="3">${esc(item.review||'')}</textarea>`;
+    revRow.innerHTML=`<label>Comments (optional)</label><textarea class="form-textarea" id="jdi-review" placeholder="A few words about how it was…" rows="3">${esc(item.review||'')}</textarea>`;
     body.appendChild(revRow);
 
     saveBtn.onclick=()=>{
@@ -1248,7 +1266,7 @@ function markDone(id){
       if(ratingEl) item.rating=parseInt(ratingEl.value)||0;
       const reviewEl=document.getElementById('jdi-review');
       if(reviewEl) item.review=reviewEl.value.trim();
-      item.likedAspects=[...aspectWrap.querySelectorAll('.jdi-aspect.on')].map(p=>p.textContent);
+      item.likedAspects = aspectWrap ? [...aspectWrap.querySelectorAll('.jdi-aspect.on')].map(p=>p.textContent) : [];
       save(); closeSheet(); renderContent();
     };
   }

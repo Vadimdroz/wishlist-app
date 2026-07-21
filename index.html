@@ -197,6 +197,16 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .sheet-cancel{flex:1;padding:12px;border-radius:12px;background:var(--surface2);font-size:.9rem;font-weight:600}
 .sheet-save{flex:2;padding:12px;border-radius:12px;background:#6366f1;color:#fff;font-size:.9rem;font-weight:600;transition:.15s}
 .sheet-save:hover{background:#5254cc}
+/* Full-screen detail sheet on mobile + gesture affordance */
+@media (max-width:640px){
+  .sheet{max-width:none;height:100vh;height:100dvh;max-height:100dvh;border-radius:0}
+  .sheet-body{overscroll-behavior:contain}
+}
+/* One-shot slide animations for swipe navigation */
+@keyframes slideInR{from{transform:translateX(30px);opacity:0}to{transform:none;opacity:1}}
+@keyframes slideInL{from{transform:translateX(-30px);opacity:0}to{transform:none;opacity:1}}
+.anim-slide-r{animation:slideInR .2s ease}
+.anim-slide-l{animation:slideInL .2s ease}
 
 /* FORM */
 .form-row{display:flex;flex-direction:column;gap:4px;margin-bottom:14px}
@@ -546,6 +556,7 @@ items = items.map(i => {
 save();
 
 let tab = 'future', catId = null, editId = null, formSub = null, searchQuery = '';
+let sheetMode = null; // 'detail' | 'other' — gestures only act in 'detail'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function save(){
@@ -1438,7 +1449,7 @@ function openDetail(id){
   editBtn.textContent = 'Edit'; editBtn.onclick = () => openForm(id);
   actions.appendChild(cancelBtn); actions.appendChild(editBtn);
 
-  openSheet();
+  openSheet('detail');
 }
 
 function appendSection(body, label, value){
@@ -3640,18 +3651,131 @@ function quickPickCategory(cId){
 }
 
 // ─── Sheet open/close ─────────────────────────────────────────────────────────
-function openSheet(){
+function openSheet(mode){
+  sheetMode = mode || 'other';
   document.getElementById('sheetOverlay').classList.add('open');
   document.body.style.overflow='hidden';
 }
 function closeSheet(){
-  editId=null;
+  editId=null; sheetMode=null;
   document.getElementById('sheetOverlay').classList.remove('open');
   document.body.style.overflow='';
 }
 function overlayClick(e){
   // do not close on outside click — only explicit Cancel/X closes the sheet
 }
+
+// ─── Swipe gesture navigation ─────────────────────────────────────────────────
+// Restart a one-shot CSS slide animation on an element.
+function oneShotAnim(elm, cls){
+  if(!elm) return;
+  elm.classList.remove('anim-slide-r','anim-slide-l');
+  void elm.offsetWidth; // force reflow so the animation replays
+  elm.classList.add(cls);
+}
+
+// The ordered list of items currently on screen behind the open detail sheet,
+// so swiping left/right steps through them in the same order they're displayed.
+function detailSiblings(){
+  if(searchQuery.trim()){
+    const q = searchQuery.trim().toLowerCase();
+    return items.filter(i => {
+      if(i.status !== tab) return false;
+      return (i.title||'').toLowerCase().includes(q)
+        || (i.notes||'').toLowerCase().includes(q)
+        || (i.synopsis||'').toLowerCase().includes(q)
+        || (i.actors||'').toLowerCase().includes(q)
+        || (i.author||'').toLowerCase().includes(q)
+        || (i.source||'').toLowerCase().includes(q);
+    });
+  }
+  if(catId){
+    let list = items.filter(i => i.cat===catId && i.status===tab);
+    if(formSub) list = list.filter(i => i.sub===formSub);
+    return list;
+  }
+  return [];
+}
+
+// Step to the previous/next item in the current category (dir: -1 prev, +1 next).
+function navDetailItem(dir){
+  const sibs = detailSiblings();
+  const idx = sibs.findIndex(i => i.id===editId);
+  if(idx < 0) return;
+  const ni = idx + dir;
+  if(ni < 0 || ni >= sibs.length) return; // at an edge — stop
+  openDetail(sibs[ni].id);
+  oneShotAnim(document.getElementById('sheetBody'), dir>0 ? 'anim-slide-r' : 'anim-slide-l');
+}
+
+// Slide the detail sheet down and close it.
+function closeSheetDown(){
+  const sheet = document.getElementById('sheet');
+  sheet.style.transition = 'transform .2s ease, opacity .2s ease';
+  sheet.style.transform = 'translateY(100%)';
+  sheet.style.opacity = '0';
+  setTimeout(() => {
+    closeSheet();
+    sheet.style.transition=''; sheet.style.transform=''; sheet.style.opacity='';
+  }, 200);
+}
+
+// Toggle to the previous/next category (wraps around).
+function navCategory(dir){
+  const idx = CATS.findIndex(c => c.id===catId);
+  if(idx < 0) return;
+  const ni = (idx + dir + CATS.length) % CATS.length;
+  catId = CATS[ni].id; formSub = null; searchQuery = ''; editId = null;
+  renderContent();
+  const shown = document.querySelector('#content .items-list, #content .empty');
+  oneShotAnim(shown, dir>0 ? 'anim-slide-r' : 'anim-slide-l');
+}
+
+function attachGestures(){
+  const H_MIN = 55, V_MIN = 75, OFF_MAX = 45;
+
+  // Detail sheet: left/right → prev/next item, down → close.
+  const sheet = document.getElementById('sheet');
+  const sheetBody = document.getElementById('sheetBody');
+  let sx, sy, ex, ey, sTop, sTrack = false;
+  sheet.addEventListener('touchstart', e => {
+    if(sheetMode !== 'detail' || e.touches.length !== 1){ sTrack = false; return; }
+    const t = e.touches[0]; sx = ex = t.clientX; sy = ey = t.clientY;
+    sTop = sheetBody.scrollTop; sTrack = true;
+  }, {passive:true});
+  sheet.addEventListener('touchmove', e => {
+    if(!sTrack) return; const t = e.touches[0]; ex = t.clientX; ey = t.clientY;
+  }, {passive:true});
+  sheet.addEventListener('touchend', () => {
+    if(!sTrack) return; sTrack = false;
+    const dx = ex - sx, dy = ey - sy;
+    if(Math.abs(dx) >= H_MIN && Math.abs(dy) <= OFF_MAX){
+      navDetailItem(dx < 0 ? 1 : -1);            // swipe left → next
+    } else if(dy >= V_MIN && Math.abs(dx) <= OFF_MAX && sTop <= 0){
+      closeSheetDown();                          // swipe down (from top) → close
+    }
+  });
+
+  // Category list view: left/right → prev/next category.
+  const content = document.getElementById('content');
+  let cx, cy, cex, cey, cTrack = false;
+  content.addEventListener('touchstart', e => {
+    if(e.touches.length !== 1){ cTrack = false; return; }
+    if(!catId || searchQuery.trim() || document.getElementById('sheetOverlay').classList.contains('open')){ cTrack = false; return; }
+    const t = e.touches[0]; cx = cex = t.clientX; cy = cey = t.clientY; cTrack = true;
+  }, {passive:true});
+  content.addEventListener('touchmove', e => {
+    if(!cTrack) return; const t = e.touches[0]; cex = t.clientX; cey = t.clientY;
+  }, {passive:true});
+  content.addEventListener('touchend', () => {
+    if(!cTrack) return; cTrack = false;
+    const dx = cex - cx, dy = cey - cy;
+    if(Math.abs(dx) >= 60 && Math.abs(dx) > Math.abs(dy) * 1.4){
+      navCategory(dx < 0 ? 1 : -1);              // swipe left → next category
+    }
+  });
+}
+attachGestures();
 
 // ─── Keyboard shortcuts ───────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {

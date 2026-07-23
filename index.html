@@ -1538,15 +1538,60 @@ function makeFetchPlaceholder(item){
   return ph;
 }
 
-// Bespoke image fetch: when the automated fetch found no image, generate one on
-// demand (Pollinations) from the item's title + category, save it, and re-render.
-function fetchBespokeImage(id, phEl){
+// Gather this item's descriptive fields into an LLM request that returns a vivid
+// English image-generation prompt — so a title in any language (e.g. Hebrew) is
+// understood and the generated image actually reflects the subject.
+function buildImagePromptRequest(item, c){
+  const bits = [];
+  if(item.title) bits.push('Title: '+item.title);
+  if(item.year) bits.push('Year: '+item.year);
+  if(item.author) bits.push('Author: '+item.author);
+  if(item.director&&item.director!=='N/A') bits.push('Director: '+item.director);
+  if(item.actors&&item.actors!=='N/A') bits.push('Cast: '+item.actors);
+  if(item.genres&&item.genres.length) bits.push('Genre: '+item.genres.join(', '));
+  if(item.cuisine) bits.push('Cuisine: '+item.cuisine);
+  const loc=[item.city,item.country].filter(Boolean).join(', '); if(loc) bits.push('Location: '+loc);
+  if(item.tripDesc) bits.push('About: '+item.tripDesc);
+  if(item.mustSee) bits.push('Highlights: '+item.mustSee);
+  if(item.synopsis&&item.synopsis!=='N/A') bits.push('Synopsis: '+item.synopsis);
+  if(item.notes) bits.push('Notes: '+item.notes);
+  const kindMap={movies:'movie poster',['tv-shows']:'TV show poster',books:'book cover',
+    restaurants:'restaurant/food photo',recipes:'plated dish photo',
+    ['local-trips']:'travel scene',['intl-trips']:'travel scene',experiences:'scene',stuff:'product photo'};
+  const kind = kindMap[c.id]||'image';
+  return 'Write an AI image-generation prompt for a '+kind+' that represents this item. '
+    + 'The title/notes may be in another language (e.g. Hebrew) — understand their meaning and depict the real subject and mood; symbolic imagery is welcome. '
+    + 'Details:\n'+bits.join('\n')
+    + '\n\nRespond with ONLY one vivid English prompt on a single line, under 40 words, describing a fitting and relevant '+kind
+    + '. Do NOT put any text, letters, titles or logos in the image. No quotes, no preamble.';
+}
+
+// Bespoke image fetch: generate an on-demand image (Pollinations) that fits the
+// item. Uses the LLM (Gemini/Claude) to craft a relevant prompt when a key is
+// available, otherwise falls back to a simple title-based prompt.
+async function fetchBespokeImage(id, phEl){
   const item = items.find(i=>i.id===id);
   if(!item) return;
   if(phEl) phEl.innerHTML = '<span>Fetching…</span>';
   const c = getCat(item.cat);
-  const prompt = bespokeImagePrompt(item, c);
-  item.poster = 'https://image.pollinations.ai/prompt/'+encodeURIComponent(prompt)
+  let prompt = bespokeImagePrompt(item, c);
+  const geminiKey = localStorage.getItem('gemini_key')||'';
+  const claudeKey = localStorage.getItem('claude_key')||CLAUDE_KEY_DEFAULT;
+  if(geminiKey || claudeKey){
+    try{
+      const req = buildImagePromptRequest(item, c);
+      const out = geminiKey ? await callGemini(geminiKey, req) : await callClaudeText(claudeKey, req);
+      let cleaned = (out||'').split('\n').map(s=>s.trim()).filter(Boolean)[0]||'';
+      cleaned = cleaned.replace(/^(image\s*)?prompt\s*[:\-]\s*/i,'').replace(/^["'`]+|["'`]+$/g,'').trim();
+      if(cleaned) prompt = cleaned;
+    }catch(_){ /* keep the fallback prompt */ }
+  }
+  const styleMap={movies:', cinematic key art, no text',['tv-shows']:', cinematic key art, no text',
+    books:', evocative book cover illustration, no text',restaurants:', appetizing food photography',
+    recipes:', appetizing food photography',['local-trips']:', scenic travel photography',
+    ['intl-trips']:', scenic travel photography',experiences:', atmospheric photo',stuff:', clean product photo'};
+  const style=styleMap[c.id]||'';
+  item.poster = 'https://image.pollinations.ai/prompt/'+encodeURIComponent(prompt+style+', no watermark')
     + '?width=600&height=900&nologo=true&seed='+Math.floor(Math.random()*100000);
   save();
   openDetail(id); // re-render — attachImgRetry handles the (slow) first load

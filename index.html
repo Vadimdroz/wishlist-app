@@ -1596,29 +1596,36 @@ async function fetchBespokeImage(id, phEl){
   const item = items.find(i=>i.id===id);
   if(!item) return;
   _bespokeBusy = true;
-  if(phEl) phEl.innerHTML = '<span>Fetching…</span>';
-  const c = getCat(item.cat);
-  let prompt = bespokeImagePrompt(item, c);
-  const geminiKey = localStorage.getItem('gemini_key')||'';
-  const claudeKey = localStorage.getItem('claude_key')||CLAUDE_KEY_DEFAULT;
-  if(geminiKey || claudeKey){
-    try{
-      const req = buildImagePromptRequest(item, c);
-      const out = geminiKey ? await callGemini(geminiKey, req) : await callClaudeText(claudeKey, req);
-      let cleaned = (out||'').split('\n').map(s=>s.trim()).filter(Boolean)[0]||'';
-      cleaned = cleaned.replace(/^(image\s*)?prompt\s*[:\-]\s*/i,'').replace(/^["'`]+|["'`]+$/g,'').trim();
-      if(cleaned) prompt = cleaned;
-    }catch(_){ /* keep the fallback prompt */ }
+  try{
+    if(phEl) phEl.innerHTML = '<span>Fetching…</span>';
+    const c = getCat(item.cat);
+    let prompt = bespokeImagePrompt(item, c);
+    const geminiKey = localStorage.getItem('gemini_key')||'';
+    const claudeKey = localStorage.getItem('claude_key')||CLAUDE_KEY_DEFAULT;
+    if(geminiKey || claudeKey){
+      try{
+        const req = buildImagePromptRequest(item, c);
+        const llm = geminiKey ? callGemini(geminiKey, req) : callClaudeText(claudeKey, req);
+        // Never let a hung/slow LLM block the fetch — time out and use the fallback prompt.
+        const out = await Promise.race([llm, new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),12000))]);
+        let cleaned = (out||'').split('\n').map(s=>s.trim()).filter(Boolean)[0]||'';
+        cleaned = cleaned.replace(/^(image\s*)?prompt\s*[:\-]\s*/i,'').replace(/^["'`]+|["'`]+$/g,'').trim();
+        if(cleaned) prompt = cleaned;
+      }catch(_){ /* keep the fallback prompt */ }
+    }
+    const styleMap={movies:', cinematic key art, no text',['tv-shows']:', cinematic key art, no text',
+      books:', evocative book cover illustration, no text',restaurants:', appetizing food photography',
+      recipes:', appetizing food photography',['local-trips']:', scenic travel photography',
+      ['intl-trips']:', scenic travel photography',experiences:', atmospheric photo',stuff:', clean product photo'};
+    const style=styleMap[c.id]||'';
+    item.poster = 'https://image.pollinations.ai/prompt/'+encodeURIComponent(prompt+style+', no watermark')
+      + '?width=600&height=900&nologo=true&seed='+Math.floor(Math.random()*100000);
+    save();
+  } catch(e){
+    console.warn('bespoke image fetch failed:', e);
+  } finally {
+    _bespokeBusy = false;   // always release, even on error/timeout
   }
-  const styleMap={movies:', cinematic key art, no text',['tv-shows']:', cinematic key art, no text',
-    books:', evocative book cover illustration, no text',restaurants:', appetizing food photography',
-    recipes:', appetizing food photography',['local-trips']:', scenic travel photography',
-    ['intl-trips']:', scenic travel photography',experiences:', atmospheric photo',stuff:', clean product photo'};
-  const style=styleMap[c.id]||'';
-  item.poster = 'https://image.pollinations.ai/prompt/'+encodeURIComponent(prompt+style+', no watermark')
-    + '?width=600&height=900&nologo=true&seed='+Math.floor(Math.random()*100000);
-  save();
-  _bespokeBusy = false;
   openDetail(id); // re-render — attachImgRetry handles the (slow) first load
 }
 

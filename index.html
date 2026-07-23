@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="viewport" id="viewportMeta" content="width=device-width,initial-scale=1"/>
 <title>Wishlist</title>
 <link rel="icon" type="image/svg+xml" href="logo.svg"/>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png"/>
@@ -694,6 +694,7 @@ function goHome(){
 
 // ─── Root render ──────────────────────────────────────────────────────────────
 function renderContent(){
+  resetZoom();
   const content = document.getElementById('content');
   content.innerHTML = '';
 
@@ -1294,6 +1295,7 @@ function deleteItem(){
 function openDetail(id){
   const item = items.find(i=>i.id===id);
   if(!item) return;
+  resetZoom();
   editId = id;
   const c = getCat(item.cat);
 
@@ -3785,9 +3787,20 @@ function closeSheet(){
   editId=null; sheetMode=null;
   document.getElementById('sheetOverlay').classList.remove('open');
   document.body.style.overflow='';
+  resetZoom();
 }
 function overlayClick(e){
   // do not close on outside click — only explicit Cancel/X closes the sheet
+}
+
+// Snap the page back to the optimal fit if the user (or iOS input auto-zoom)
+// left it zoomed. Momentarily lock the scale, then restore so manual pinch-zoom
+// still works afterwards. No-op visually when the page isn't zoomed.
+function resetZoom(){
+  const vp = document.getElementById('viewportMeta');
+  if(!vp) return;
+  vp.setAttribute('content','width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0');
+  setTimeout(() => { vp.setAttribute('content','width=device-width,initial-scale=1'); }, 350);
 }
 
 // ─── Swipe gesture navigation ─────────────────────────────────────────────────

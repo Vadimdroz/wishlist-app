@@ -1571,6 +1571,12 @@ function buildForm(body, c, item){
       : '🎬 Smart Update from IMDb';
     sb.onclick = smartUpdate;
     body.appendChild(sb);
+    if(c.id!=='books'){
+      const hint = el('div');
+      hint.style.cssText='font-size:.74rem;color:var(--muted);margin:-8px 0 12px';
+      hint.textContent='Enter a title — or leave it blank and fill in Director to search by director.';
+      body.appendChild(hint);
+    }
     const ss = el('div','smart-status'); ss.id='smartStatus'; body.appendChild(ss);
     const pc = el('div'); pc.id='pickerContainer'; body.appendChild(pc);
   }
@@ -2209,13 +2215,23 @@ function saveItem(){
 
 // ─── Smart Update ──────────────────────────────────────────────────────────────
 function smartUpdate(){
-  const title = v('f-title').trim();
-  if(!title){ document.getElementById('f-title').focus(); return; }
   const c = getCat(catId);
-  if(c.id==='books'){ searchOpenLibrary(title); return; }
-  // Both movies and TV shows use OMDB (type param filters appropriately)
+  const title = v('f-title').trim();
+  if(c.id==='books'){
+    if(!title){ document.getElementById('f-title').focus(); return; }
+    searchOpenLibrary(title); return;
+  }
+  // Movies & TV → OMDB (IMDb data). When the title is empty or returns no
+  // match, fall back to searching by the director's name.
   const omdbType = c.id==='tv-shows' ? 'series' : 'movie';
-  searchOmdb(localStorage.getItem('omdb_key')||OMDB_KEY_DEFAULT, title, omdbType);
+  const key = localStorage.getItem('omdb_key')||OMDB_KEY_DEFAULT;
+  const director = (v('f-director')||'').trim();
+  if(!title && !director){ document.getElementById('f-title').focus(); return; }
+  if(title){
+    searchOmdb(key, title, omdbType, director ? () => directorSearch(director, omdbType, key) : null);
+  } else {
+    directorSearch(director, omdbType, key);
+  }
 }
 
 function setSmartStatus(msg){ const e=document.getElementById('smartStatus'); if(e) e.textContent=msg; }
@@ -3257,15 +3273,15 @@ function saveOmdbKey(){
 }
 
 // ── OMDB ──────────────────────────────────────────────────────────────────────
-async function searchOmdb(key, title, type='movie'){
+async function searchOmdb(key, title, type='movie', onEmpty=null){
   setSmartStatus('Searching…');
   document.getElementById('pickerContainer').innerHTML='';
   try{
     const res=await fetch(`https://www.omdbapi.com/?s=${encodeURIComponent(title)}&type=${type}&apikey=${key}`);
     const data=await res.json();
-    if(data.Response==='False'){ setSmartStatus(data.Error||'Not found'); return; }
+    if(data.Response==='False'){ if(onEmpty){ onEmpty(); } else { setSmartStatus(data.Error||'Not found'); } return; }
     const results=data.Search||[];
-    if(!results.length){ setSmartStatus('No results'); return; }
+    if(!results.length){ if(onEmpty){ onEmpty(); } else { setSmartStatus('No results'); } return; }
     if(results.length===1){ setSmartStatus('Loading…'); fetchOmdbById(key,results[0].imdbID); return; }
     setSmartStatus('Select a result:');
     showPicker(results.slice(0,8).map(r=>({
@@ -3296,6 +3312,77 @@ async function applyOmdbData(data){
   if(data.Poster&&data.Poster!=='N/A') setFormPoster(data.Poster);
   setSmartStatus('Applied! Fetching trailer…');
   await fetchTrailer((data.Title||'')+' '+(data.Year||'')+' official trailer');
+}
+
+// ── Director-based search (LLM → OMDB) ─────────────────────────────────────────
+// OMDB can only search by title, so to find a movie/series by its director we
+// ask the LLM (Gemini or Claude — same keys used for other Smart Fill features)
+// for that director's notable works, then look each up in OMDB/IMDb.
+async function directorSearch(director, type, key){
+  const geminiKey = localStorage.getItem('gemini_key')||'';
+  const claudeKey = localStorage.getItem('claude_key')||CLAUDE_KEY_DEFAULT;
+  if(!geminiKey && !claudeKey){
+    setSmartStatus('Add a Gemini or Claude API key in ⚙️ Settings to search by director.');
+    return;
+  }
+  document.getElementById('pickerContainer').innerHTML='';
+  const kind = type==='series' ? 'TV series' : 'films';
+  setSmartStatus('Finding '+kind+' by '+director+'…');
+  const prompt = 'List up to 12 notable '+kind+' directed by "'+director+'". '
+    + 'Respond with ONLY a compact JSON array, most acclaimed/popular first, '
+    + 'each item {"title":"…","year":"YYYY"}. No commentary, no code fences.';
+  let text='';
+  try{
+    text = geminiKey ? await callGemini(geminiKey, prompt) : await callClaudeText(claudeKey, prompt);
+  } catch(e){ setSmartStatus('Director search failed: '+e.message); return; }
+  const films = parseFilmList(text);
+  if(!films.length){ setSmartStatus('Couldn’t find '+kind+' for “'+director+'”'); return; }
+  setSmartStatus('Select a '+(type==='series'?'series':'film')+' by '+director+':');
+  showPicker(films.slice(0,12).map(f=>({
+    poster:'', title:f.title, sub:f.year||'',
+    onclick: ()=>{ document.getElementById('pickerContainer').innerHTML=''; setSmartStatus('Loading…'); omdbLookupByTitle(key, f.title, f.year, type); }
+  })));
+}
+
+function parseFilmList(text){
+  if(!text) return [];
+  let t = text.trim().replace(/^```(?:json)?/i,'').replace(/```$/,'').trim();
+  const m = t.match(/\[[\s\S]*\]/);
+  if(m) t = m[0];
+  try{
+    const arr = JSON.parse(t);
+    if(Array.isArray(arr)) return arr.filter(x=>x&&x.title)
+      .map(x=>({ title:String(x.title).trim(), year:x.year?String(x.year).slice(0,4):'' }));
+  } catch(_){}
+  return [];
+}
+
+// Exact-title OMDB lookup (with optional year); falls back to a title search picker.
+async function omdbLookupByTitle(key, title, year, type){
+  try{
+    const base = 'https://www.omdbapi.com/?t='+encodeURIComponent(title)+'&type='+type+'&apikey='+key;
+    let res = await fetch(base + (year?'&y='+encodeURIComponent(year):''));
+    let data = await res.json();
+    if(data.Response==='False' && year){ res = await fetch(base); data = await res.json(); }
+    if(data.Response==='False'){ return searchOmdb(key, title, type); }
+    applyOmdbData(data);
+  } catch(e){ setSmartStatus('Error: '+e.message); }
+}
+
+async function callClaudeText(claudeKey, prompt){
+  let modelId = 'claude-3-5-haiku-latest';
+  try{
+    const mr = await fetch('https://api.anthropic.com/v1/models',{headers:{'x-api-key':claudeKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}});
+    if(mr.ok){ const md=await mr.json(); const ids=(md.data||[]).map(m=>m.id); modelId=ids.find(id=>id.includes('haiku'))||ids.find(id=>id.includes('sonnet'))||ids[0]||modelId; }
+  } catch(_){}
+  const res = await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':claudeKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:modelId,max_tokens:500,messages:[{role:'user',content:prompt}]})
+  });
+  if(!res.ok){ const e=await res.text(); throw new Error('HTTP '+res.status+' — '+e.slice(0,120)); }
+  const d = await res.json();
+  return (d.content && d.content[0] && d.content[0].text) || '';
 }
 
 // ── TVmaze ────────────────────────────────────────────────────────────────────

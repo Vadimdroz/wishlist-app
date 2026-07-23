@@ -3330,9 +3330,11 @@ async function directorSearch(director, type, key){
   document.getElementById('pickerContainer').innerHTML='';
   const kind = type==='series' ? 'TV series' : 'films';
   setSmartStatus('Finding '+kind+' by '+director+'…');
-  const prompt = 'List up to 12 notable '+kind+' directed by "'+director+'". '
-    + 'Respond with ONLY a compact JSON array, most acclaimed/popular first, '
-    + 'each item {"title":"…","year":"YYYY"}. No commentary, no code fences.';
+  const prompt = 'List up to 20 '+kind+' directed by "'+director+'", '
+    + 'including recent, upcoming, announced and unreleased ones. '
+    + 'Order from newest/upcoming to oldest. Respond with ONLY a compact JSON array, '
+    + 'each item {"title":"…","year":"YYYY"} (use the expected release year for '
+    + 'unreleased films). No commentary, no code fences.';
   let text='';
   try{
     text = geminiKey ? await callGemini(geminiKey, prompt) : await callClaudeText(claudeKey, prompt);
@@ -3340,9 +3342,9 @@ async function directorSearch(director, type, key){
   const films = parseFilmList(text);
   if(!films.length){ setSmartStatus('Couldn’t find '+kind+' for “'+director+'”'); return; }
   setSmartStatus('Select a '+(type==='series'?'series':'film')+' by '+director+':');
-  showPicker(films.slice(0,12).map(f=>({
+  showPicker(films.slice(0,20).map(f=>({
     poster:'', title:f.title, sub:f.year||'',
-    onclick: ()=>{ document.getElementById('pickerContainer').innerHTML=''; setSmartStatus('Loading…'); omdbLookupByTitle(key, f.title, f.year, type); }
+    onclick: ()=>{ document.getElementById('pickerContainer').innerHTML=''; setSmartStatus('Loading…'); omdbLookupByTitle(key, f.title, f.year, type, director); }
   })));
 }
 
@@ -3359,15 +3361,40 @@ function parseFilmList(text){
   return [];
 }
 
-// Exact-title OMDB lookup (with optional year); falls back to a title search picker.
-async function omdbLookupByTitle(key, title, year, type){
+// Resolve a director-search pick to OMDB/IMDb data. Tries an exact title+year
+// match, then a title search preferring the result whose year matches (so a
+// generic title like "The Odyssey" doesn't grab an unrelated older film). If
+// OMDB has nothing (common for unreleased films), fills the basics from the pick.
+async function omdbLookupByTitle(key, title, year, type, director){
   try{
     const base = 'https://www.omdbapi.com/?t='+encodeURIComponent(title)+'&type='+type+'&apikey='+key;
-    let res = await fetch(base + (year?'&y='+encodeURIComponent(year):''));
-    let data = await res.json();
-    if(data.Response==='False' && year){ res = await fetch(base); data = await res.json(); }
-    if(data.Response==='False'){ return searchOmdb(key, title, type); }
-    applyOmdbData(data);
+    // 1) exact title + year
+    if(year){
+      const d = await (await fetch(base+'&y='+encodeURIComponent(year))).json();
+      if(d.Response!=='False'){ return applyOmdbData(d); }
+    }
+    // 2) title search, prefer a year match (or a single result)
+    const sd = await (await fetch('https://www.omdbapi.com/?s='+encodeURIComponent(title)+'&type='+type+'&apikey='+key)).json();
+    const results = (sd && sd.Search) || [];
+    if(results.length){
+      const hit = (year && results.find(r=>String(r.Year).slice(0,4)===String(year)))
+        || (results.length===1 ? results[0] : null);
+      if(hit){ return fetchOmdbById(key, hit.imdbID); }
+      // multiple, ambiguous → let the user choose
+      setSmartStatus('Select the right match:');
+      return showPicker(results.slice(0,8).map(r=>({
+        poster: r.Poster&&r.Poster!=='N/A'?r.Poster:'', title:r.Title, sub:r.Year,
+        onclick: ()=>{ document.getElementById('pickerContainer').innerHTML=''; setSmartStatus('Loading…'); fetchOmdbById(key, r.imdbID); }
+      })));
+    }
+    // 3) exact title without year, last try
+    const d2 = await (await fetch(base)).json();
+    if(d2.Response!=='False'){ return applyOmdbData(d2); }
+    // 4) not in OMDB (likely unreleased) → fill what we know from the pick
+    setField('f-title', title);
+    if(year) setField('f-year', year);
+    if(director) setField('f-director', director);
+    setSmartStatus('“'+title+'” isn’t on IMDb yet (likely unreleased) — filled title, year & director.');
   } catch(e){ setSmartStatus('Error: '+e.message); }
 }
 

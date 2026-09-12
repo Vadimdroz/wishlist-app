@@ -156,6 +156,13 @@ Card shows: type badge (🛒 Buy / 🔍 Research), price, pros snippet, 🔗 Lin
 
 ---
 
+## Authentication
+Firebase Auth on project `wishlist-app-5ca53`, with two sign-in methods on the same account:
+- **Google Sign-In** (`signInWithGoogle()`) — original method, popup-based.
+- **Email/Password** (`signInWithEmailPass()`) — added later; linked to the same Firebase user as Google (same UID, same Firestore data) via `currentUser.linkWithCredential()` rather than a separate account. Set/changed from Settings (`saveAccountPassword()` — `linkWithCredential` the first time, `updatePassword` after). Requires the Email/Password provider to be enabled in Firebase Console → Authentication → Sign-in method (a manual, non-code step, like `firestore.rules` publishing).
+
+Both funnel through the single `_auth.onAuthStateChanged` handler — no per-provider branching needed downstream.
+
 ## External APIs Used
 | API | Purpose | Key |
 |---|---|---|

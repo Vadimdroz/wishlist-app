@@ -4180,39 +4180,19 @@ function exportCSV(){
 }
 
 // ─── Auto Backup (every 24 hours) ────────────────────────────────────────────
+// Silent — writes a JSON snapshot to localStorage instead of forcing a file
+// download, so it never navigates the page away (which happened on mobile/PWA
+// when a forced blob download had nowhere to go but a full-page redirect).
+// The visible Export button (exportJSON/exportCSV) is unaffected and only
+// ever runs when the user clicks it.
 function autoBackup(){
   const INTERVAL = 24 * 60 * 60 * 1000;
   const last = parseInt(localStorage.getItem('wl_last_backup') || '0');
   if(Date.now() - last < INTERVAL) return;
-  const cols = [
-    'Category','Title','Status','Year','Source','Rating','Match',
-    'Director','Author','Cuisine','City','Country','Price Range',
-    'Visit Date','Done Date','Liked Aspects','Favourite Dishes',
-    'Review','Notes','Genres','Poster'
-  ];
-  const priceLabels={budget:'Up to $30',mid:'$30–$75',upscale:'$75–$150',fine:'Above $150'};
-  const rows = items.map(item => {
-    const c = getCat(item.cat);
-    return [
-      c.label, item.title||'', item.status||'', item.year||'',
-      (item.source&&item.source!=='N/A') ? item.source : '',
-      item.rating||'', item.match||'', item.director||'', item.author||'',
-      item.cuisine||'', item.city||'', item.country||'',
-      item.priceRange ? (priceLabels[item.priceRange]||item.priceRange) : '',
-      item.visitDate||'', item.doneDate||'',
-      (item.likedAspects||[]).join('; '), (item.favDishes||[]).join('; '),
-      item.review||'', item.notes||'', (item.genres||[]).join('; '), item.poster||''
-    ].map(val => `"${String(val).replace(/"/g,'""')}"`);
-  });
-  const csv = [cols.map(c=>`"${c}"`).join(','), ...rows.map(r=>r.join(','))].join('\r\n');
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url;
-  a.download = `wishlist-backup-${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-  localStorage.setItem('wl_last_backup', Date.now().toString());
+  try{
+    localStorage.setItem('wl_auto_backup', JSON.stringify({date:new Date().toISOString(), items}));
+    localStorage.setItem('wl_last_backup', Date.now().toString());
+  }catch(_){}
 }
 
 // ─── Firebase Auth & Init ─────────────────────────────────────────────────────

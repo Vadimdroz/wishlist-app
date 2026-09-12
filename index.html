@@ -2227,6 +2227,29 @@ function setFormPoster(url){
   if(inner._showPoster) inner._showPoster(url);
 }
 
+// ─── Unified image fallback ───────────────────────────────────────────────────
+// Every "smart fetch" flow (OMDB, Open Library, Google Places, product/recipe
+// URL scraping) ends here: if none of them found a real, relevant image, this
+// generates one keyword-matched placeholder so a fetch never leaves an item
+// silently blank. Used consistently across every category instead of each
+// flow inventing its own ad-hoc fallback (or none at all).
+function placeholderImageUrl(seedText, category){
+  const words=[...(seedText||'').toLowerCase().split(/\s+/), ...(category||'').toLowerCase().split(/\s+/)]
+    .map(w=>w.replace(/[^a-z0-9]/g,''))
+    .filter(Boolean);
+  const kw=words.slice(0,4).join(',')||category||'item';
+  const seedFor=seedText||category||'item';
+  let seed=0; for(const ch of seedFor) seed=(seed*31+ch.charCodeAt(0))&0x7fffffff;
+  return `https://loremflickr.com/400/400/${encodeURIComponent(kw)}?lock=${seed}`;
+}
+
+function ensureFallbackImage(seedText, category){
+  const posterEl=document.getElementById('posterSection');
+  if(posterEl && posterEl.dataset.url) return false;
+  setFormPoster(placeholderImageUrl(seedText, category));
+  return true;
+}
+
 function toggleGenre(g){
   const idx=selectedGenresList.indexOf(g);
   if(idx===-1) selectedGenresList.push(g); else selectedGenresList.splice(idx,1);
@@ -2606,7 +2629,10 @@ async function fetchIntlTripInfo(){
         }
       }catch(_){}
     }
-    document.getElementById('itSmartStatus').textContent='✓ Done! All fields are editable.';
+    const gotImage=!ensureFallbackImage(info.locationQuery||v('f-title'), 'travel destination');
+    document.getElementById('itSmartStatus').textContent=gotImage
+      ? '✓ Done! All fields are editable.'
+      : '✓ Done — no cover photo found, using a placeholder. All fields are editable.';
   }catch(e){ document.getElementById('itSmartStatus').textContent='Error: '+e.message; }
 }
 
@@ -2699,6 +2725,7 @@ async function fetchRecipeInfo(){
                 if(name&&!v('f-title')) setField('f-title',name);
                 if(authorName){ const byEl=document.getElementById('f-recipe-by'); if(byEl&&!byEl.value){ const cleaned=String(authorName).replace(/^@\S+$/,'').trim(); if(cleaned) byEl.value=cleaned; } }
                 if(imgUrl){ setFormPoster(imgUrl); imageSet=true; }
+                else ensureFallbackImage(name||v('f-title'), 'recipe');
                 let notes='';
                 if(timeStr) notes+=`⏱ ${timeStr}\n\n`;
                 if(ingredients) notes+=`🧂 Ingredients:\n${ingredients}`;
@@ -2787,7 +2814,8 @@ async function fetchRecipeInfo(){
     if(info.totalTime) notes+=`⏱ ${info.totalTime}\n\n`;
     if(info.ingredients) notes+=`🧂 Ingredients:\n${info.ingredients}`;
     if(notes){ const el=document.getElementById('f-notes'); if(el) el.value=notes.trim(); }
-    setStatus('Done ✓');
+    const gotImage=!ensureFallbackImage(info.name||v('f-title'), 'recipe');
+    setStatus(gotImage ? 'Done ✓' : 'Done ✓ — no photo found, using a placeholder.');
   }catch(e){ setStatus('Error: '+e.message); }
 }
 
@@ -3028,11 +3056,7 @@ async function stuffFetchProduct(){
     setStatus('✓ Done — review and edit fields.');
   } else if(title){
     setStatus('No image found — finding placeholder…');
-    // Keyword-matched placeholder via LoremFlickr (free, CORS-open)
-    const kw = title.toLowerCase().replace(/[^a-z0-9 ]/g,' ')
-      .split(/\s+/).filter(Boolean).slice(0,3).join(',');
-    let seed=0; for(const c of title) seed=(seed*31+c.charCodeAt(0))&0x7fffffff;
-    setFormPoster(`https://loremflickr.com/400/400/${kw}?lock=${seed}`);
+    setFormPoster(placeholderImageUrl(title, 'product'));
     const psInner=document.getElementById('posterSection');
     const pImg=psInner?.querySelector('img');
     if(pImg){
@@ -3139,7 +3163,7 @@ async function addResearchOption(){
     }
   }
 
-  const opt={ url, name:name||url, image, price, pros:'', desc };
+  const opt={ url, name:name||url, image: image||placeholderImageUrl(name||url,'product'), price, pros:'', desc };
   window._researchOptions.push(opt);
   renderResearchOptions();
   if(urlEl) urlEl.value='';
@@ -3279,15 +3303,17 @@ async function applyRestaurantPlace(place, key, setStatus){
   if(place.priceLevel&&priceLevelMap[place.priceLevel]){
     const sel=document.getElementById('f-price'); if(sel) sel.value=priceLevelMap[place.priceLevel];
   }
+  let gotPhoto=false;
   if(place.photos?.length){
     setStatus('Fetching cover image…');
     try{
       const pr=await fetch(`https://places.googleapis.com/v1/${place.photos[0].name}/media?maxWidthPx=800&skipHttpRedirect=true&key=${key}`,{signal:AbortSignal.timeout(8000)});
       const pd=await pr.json();
-      if(pd.photoUri) setFormPoster(pd.photoUri);
+      if(pd.photoUri){ setFormPoster(pd.photoUri); gotPhoto=true; }
     }catch(_){}
   }
-  setStatus('✓ Done! Review and adjust the fields below.');
+  if(!gotPhoto) ensureFallbackImage(place.displayName?.text, 'restaurant');
+  setStatus(gotPhoto ? '✓ Done! Review and adjust the fields below.' : '✓ Done — no cover photo found, using a placeholder. Review and adjust the fields below.');
 }
 
 async function applyLocalTripPlace(place, key, statusEl){
@@ -3304,15 +3330,17 @@ async function applyLocalTripPlace(place, key, statusEl){
   });
   if(region) setField('f-region', region);
   if(place.location) window._ltPlaceLocation=place.location;
+  let gotPhoto=false;
   if(place.photos?.length){
     set('Fetching image…');
     try{
       const pr=await fetch(`https://places.googleapis.com/v1/${place.photos[0].name}/media?maxWidthPx=800&skipHttpRedirect=true&key=${key}`,{signal:AbortSignal.timeout(8000)});
       const pd=await pr.json();
-      if(pd.photoUri) setFormPoster(pd.photoUri);
+      if(pd.photoUri){ setFormPoster(pd.photoUri); gotPhoto=true; }
     }catch(_){}
   }
-  set('✓ Done! Adjust fields below, then click 🧭 Calculate for commute.');
+  if(!gotPhoto) ensureFallbackImage(place.displayName?.text, 'trip');
+  set(gotPhoto ? '✓ Done! Adjust fields below, then click 🧭 Calculate for commute.' : '✓ Done — no photo found, using a placeholder. Adjust fields below, then click 🧭 Calculate for commute.');
 }
 
 async function searchPlacesRestaurant(){
@@ -3452,8 +3480,14 @@ async function applyOmdbData(data){
   setField('f-director',data.Director&&data.Director!=='N/A'?data.Director:'');
   setField('f-actors',data.Actors&&data.Actors!=='N/A'?data.Actors:'');
   setField('f-synopsis',data.Plot&&data.Plot!=='N/A'?data.Plot:'');
-  if(data.Poster&&data.Poster!=='N/A') setFormPoster(data.Poster);
-  setSmartStatus('Applied! Fetching trailer…');
+  const category = getCat(catId).id==='tv-shows' ? 'tv show' : 'movie';
+  if(data.Poster&&data.Poster!=='N/A'){
+    setFormPoster(data.Poster);
+    setSmartStatus('Applied! Fetching trailer…');
+  } else {
+    ensureFallbackImage(data.Title, category);
+    setSmartStatus('Applied — no official poster found, using a placeholder. Fetching trailer…');
+  }
   await fetchTrailer((data.Title||'')+' '+(data.Year||'')+' official trailer');
 }
 
@@ -3593,8 +3627,13 @@ async function fetchAndApplyBook(book){
   if(description) setField('f-synopsis',description);
   const kindleQ=encodeURIComponent(book.title+(book.author_name?' '+book.author_name[0]:''));
   setField('f-kindle',`https://www.amazon.com/s?k=${kindleQ}&i=digital-text`);
-  if(book.cover_i) setFormPoster(`https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg`);
-  setSmartStatus('Done!');
+  if(book.cover_i){
+    setFormPoster(`https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg`);
+    setSmartStatus('Done!');
+  } else {
+    ensureFallbackImage(book.title, 'book');
+    setSmartStatus('Done — no cover found, using a placeholder image.');
+  }
 }
 
 // ── Shared picker / trailer helpers ───────────────────────────────────────────

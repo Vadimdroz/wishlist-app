@@ -3555,46 +3555,6 @@ async function callClaudeText(claudeKey, prompt){
   return (d.content && d.content[0] && d.content[0].text) || '';
 }
 
-// ── TVmaze ────────────────────────────────────────────────────────────────────
-async function searchTvmaze(title){
-  setSmartStatus('Searching TVmaze…');
-  document.getElementById('pickerContainer').innerHTML='';
-  try{
-    const res=await fetch(`https://api.tvmaze.com/search/shows?q=${encodeURIComponent(title)}`);
-    const results=await res.json();
-    if(!results.length){ setSmartStatus('Not found'); return; }
-    if(results.length===1){ setSmartStatus('Loading…'); fetchTvmazeById(results[0].show.id); return; }
-    setSmartStatus('Select a result:');
-    showPicker(results.slice(0,8).map(r=>({
-      poster: r.show.image&&r.show.image.medium||'',
-      title: r.show.name,
-      sub: (r.show.premiered?r.show.premiered.slice(0,4):'')+(r.show.network?' · '+r.show.network.name:''),
-      onclick: ()=>{ document.getElementById('pickerContainer').innerHTML=''; setSmartStatus('Loading…'); fetchTvmazeById(r.show.id); }
-    })));
-  } catch(e){ setSmartStatus('Error: '+e.message); }
-}
-
-async function fetchTvmazeById(showId){
-  try{
-    const [showRes,castRes]=await Promise.all([
-      fetch(`https://api.tvmaze.com/shows/${showId}`),
-      fetch(`https://api.tvmaze.com/shows/${showId}/cast`)
-    ]);
-    const show=await showRes.json();
-    const cast=await castRes.json();
-    const year=show.premiered?show.premiered.slice(0,4):'';
-    setField('f-title',show.name);
-    setField('f-year',year);
-    setField('f-language',show.language);
-    setField('f-actors',cast.slice(0,5).map(c=>c.person&&c.person.name).filter(Boolean).join(', '));
-    setField('f-synopsis',show.summary?show.summary.replace(/<[^>]+>/g,''):'');
-    const poster=show.image&&(show.image.original||show.image.medium);
-    if(poster) setFormPoster(poster);
-    setSmartStatus('Applied! Fetching trailer…');
-    await fetchTrailer((show.name||'')+' '+year+' official trailer');
-  } catch(e){ setSmartStatus('Error: '+e.message); }
-}
-
 // ── Open Library ──────────────────────────────────────────────────────────────
 async function searchOpenLibrary(title){
   setSmartStatus('Searching Open Library…');
